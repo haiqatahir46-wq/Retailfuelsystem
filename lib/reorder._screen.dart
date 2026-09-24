@@ -7,7 +7,7 @@ import 'stock_screen.dart' show TankStock;
 /// StockScreen - a SEPARATE screen from ThresholdScreen, reached
 /// independently. Lists every tank (reusing the same TankStock data
 /// StockScreen already shows, so the numbers never drift apart) with a
-/// blank reorder-quantity field per tank - nothing pre-filled, the owner
+/// blank reorder-quantity field per tank - nothing pre-filled, the ownergit
 /// enters how much they actually want to order. No bottom nav (this is a
 /// drill-down, not a tab), just a back arrow to return to Stock.
 class CreateReorderScreen extends StatefulWidget {
