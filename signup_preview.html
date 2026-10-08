@@ -1,0 +1,234 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>PARCO Sign Up Screen Preview</title>
+<style>
+  :root{
+    --brand-red:#D71920;
+    --primary-text:#172B4D;
+    --secondary-text:#5E6C84;
+    --bg:#F6F8FB;
+    --card-bg:#FFFFFF;
+    --border:#E2E8F0;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0;
+    min-height:100vh;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    background:#EDEFF3;
+    font-family:"Segoe UI",system-ui,-apple-system,sans-serif;
+    padding:24px;
+  }
+  .phone{
+    position:relative;
+    width:430px;
+    height:932px;
+    border-radius:46px;
+    box-shadow:0 24px 60px rgba(23,43,77,0.25);
+    overflow:hidden;
+    border:10px solid #111;
+    background:#fff;
+  }
+
+  /* ---------- Station image panel (same wave family, shorter) ---------- */
+  .scene{
+    position:absolute;
+    top:0;left:0;right:0;
+    height:280px;
+    background:#fff;
+    clip-path:url(#waveClipSignup);
+  }
+  .scene img{
+    position:absolute;
+    inset:0;
+    width:100%;
+    height:100%;
+    object-fit:cover;
+    object-position:center 40%;
+  }
+  .back-btn{
+    position:absolute;
+    top:22px;left:20px;
+    width:38px;height:38px;
+    border-radius:50%;
+    background:rgba(23,15,15,0.45);
+    -webkit-backdrop-filter:blur(6px);
+    backdrop-filter:blur(6px);
+    border:1px solid rgba(255,255,255,0.2);
+    display:flex;align-items:center;justify-content:center;
+    z-index:2;
+  }
+
+  /* ---------- Sign-up form panel ---------- */
+  .form-panel{
+    position:absolute;
+    left:0;right:0;bottom:0;
+    height:652px;
+    background:var(--card-bg);
+    padding:26px 28px 30px;
+    overflow-y:auto;
+    animation:formIn .9s cubic-bezier(.16,.84,.44,1) both;
+  }
+  @keyframes formIn{
+    from{ transform:translateY(30px); opacity:0; }
+    to{ transform:translateY(0); opacity:1; }
+  }
+
+  .signup-block{
+    text-align:center;
+    margin-bottom:22px;
+  }
+  .signup-block h1{
+    margin:0;
+    font-size:23px;
+    font-weight:700;
+    color:var(--primary-text);
+  }
+  .signup-block p{
+    margin:6px 0 0;
+    font-size:13px;
+    color:var(--secondary-text);
+  }
+
+  .field{
+    margin-bottom:14px;
+  }
+  .field label{
+    display:block;
+    font-size:12px;
+    font-weight:600;
+    color:var(--secondary-text);
+    margin-bottom:6px;
+  }
+  .field .input-wrap{
+    position:relative;
+  }
+  .field input{
+    width:100%;
+    height:48px;
+    border-radius:12px;
+    border:1px solid var(--border);
+    background:var(--bg);
+    padding:0 16px;
+    font-size:14px;
+    color:var(--primary-text);
+    outline:none;
+  }
+  .field input:focus{
+    border-color:var(--brand-red);
+    background:#fff;
+  }
+  .field input::placeholder{color:#9AA5B8;}
+  .field .icon{
+    position:absolute;
+    right:14px;top:50%;
+    transform:translateY(-50%);
+    color:var(--secondary-text);
+    pointer-events:none;
+  }
+
+  .field-row{
+    display:flex;
+    gap:12px;
+  }
+  .field-row .field{flex:1;}
+
+  .signup-btn{
+    width:100%;
+    height:52px;
+    border:none;
+    border-radius:14px;
+    background:var(--brand-red);
+    color:#fff;
+    font-size:15px;
+    font-weight:700;
+    letter-spacing:.3px;
+    cursor:pointer;
+    box-shadow:0 10px 22px rgba(215,25,32,.3);
+    margin-top:6px;
+  }
+
+  .signin-hint{
+    margin-top:18px;
+    text-align:center;
+    font-size:13px;
+    color:var(--secondary-text);
+  }
+  .signin-hint b{color:var(--brand-red);}
+</style>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute">
+  <defs>
+    <!-- Same wave family as splash/login, rescaled to this shorter panel. -->
+    <clipPath id="waveClipSignup" clipPathUnits="userSpaceOnUse">
+      <path d="M0,215 C121,253 176,253 215,232 C254,210 309,172 430,194 L430,0 L0,0 Z"/>
+    </clipPath>
+  </defs>
+</svg>
+
+<div class="phone">
+
+  <div class="scene">
+    <img src="station.webp" alt="TOTAL PARCO filling station">
+    <div class="back-btn">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+    </div>
+  </div>
+
+  <div class="form-panel">
+    <div class="signup-block">
+      <h1>Create Account</h1>
+      <p>Set up your station operations account</p>
+    </div>
+
+    <form onsubmit="return false;">
+      <div class="field">
+        <label for="su-user">Username or Gmail</label>
+        <input id="su-user" type="text" placeholder="Enter username or Gmail">
+      </div>
+
+      <div class="field">
+        <label for="su-pass">Password</label>
+        <div class="input-wrap">
+          <input id="su-pass" type="password" placeholder="Create a password">
+          <span class="icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"/><circle cx="12" cy="12" r="3"/></svg>
+          </span>
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="su-dob">Date of Birth</label>
+        <div class="input-wrap">
+          <input id="su-dob" type="text" placeholder="DD / MM / YYYY">
+          <span class="icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="3"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+          </span>
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="su-station">Name of Station</label>
+        <input id="su-station" type="text" placeholder="e.g. Amir Filling, Pattoki">
+      </div>
+
+      <div class="field">
+        <label for="su-count">No. of Stations</label>
+        <input id="su-count" type="number" min="1" placeholder="1" value="1">
+      </div>
+
+      <button class="signup-btn" type="submit">Create Account</button>
+    </form>
+
+    <div class="signin-hint">Already have an account? <b>Sign In</b></div>
+  </div>
+
+</div>
+</body>
+</html>

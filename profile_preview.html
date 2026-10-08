@@ -1,0 +1,174 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>PARCO Profile Screen Preview</title>
+<style>
+  :root{
+    --brand-red:#D71920;
+    --red-light:#FFF1F2;
+    --primary-text:#172B4D;
+    --secondary-text:#5E6C84;
+    --bg:#F6F8FB;
+    --card-bg:#FFFFFF;
+    --border:#E2E8F0;
+    --fault:#D64545;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0;
+    min-height:100vh;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    background:#EDEFF3;
+    font-family:"Segoe UI",system-ui,-apple-system,sans-serif;
+    padding:24px;
+  }
+  .phone{
+    width:430px;
+    height:932px;
+    background:var(--bg);
+    border-radius:46px;
+    box-shadow:0 24px 60px rgba(23,43,77,0.25);
+    border:10px solid #111;
+    display:flex;
+    flex-direction:column;
+    overflow:hidden;
+  }
+  .appbar{
+    padding:14px 16px;
+    display:flex;align-items:center;gap:10px;
+    background:var(--card-bg);
+    border-bottom:1px solid var(--border);
+  }
+  .appbar .back{cursor:pointer;color:var(--primary-text);display:flex;}
+  .appbar .title{font-size:17px;font-weight:700;color:var(--primary-text);}
+
+  .content{flex:1;overflow-y:auto;padding:24px 24px 24px;}
+
+  .head-row{display:flex;align-items:center;gap:24px;}
+  .avatar{
+    width:64px;height:64px;border-radius:50%;background:var(--red-light);
+    display:flex;align-items:center;justify-content:center;flex-shrink:0;
+  }
+  .avatar svg{stroke:var(--brand-red);}
+  .stat .value{font-size:16px;font-weight:700;color:var(--primary-text);}
+  .stat .label{font-size:11px;color:var(--secondary-text);margin-top:2px;}
+
+  .owner-name{font-size:18px;font-weight:700;color:var(--primary-text);margin-top:20px;}
+  .owner-address{font-size:13px;color:var(--secondary-text);margin-top:4px;}
+
+  .edit-btn{
+    margin-top:20px;height:48px;width:100%;border:none;border-radius:14px;
+    background:var(--brand-red);color:#fff;font-size:14px;font-weight:700;
+    display:flex;align-items:center;justify-content:center;gap:8px;cursor:pointer;
+  }
+
+  .list{margin-top:24px;}
+  .list-row{
+    display:flex;align-items:center;gap:14px;padding:14px 0;
+    border-bottom:1px solid var(--border);cursor:pointer;
+  }
+  .list-row svg.leading{stroke:var(--brand-red);flex-shrink:0;}
+  .list-row .label{flex:1;font-size:14.5px;font-weight:600;color:var(--primary-text);}
+  .list-row svg.trailing{stroke:var(--secondary-text);flex-shrink:0;}
+
+  .logout-btn{
+    margin-top:28px;height:48px;width:100%;border-radius:14px;
+    background:transparent;color:var(--fault);border:1.5px solid var(--fault);
+    font-size:14px;font-weight:700;display:flex;align-items:center;justify-content:center;gap:8px;cursor:pointer;
+  }
+
+  .navbar{background:#fff;border-top:1px solid var(--border);padding:8px 0 10px;display:flex;justify-content:space-evenly;}
+  .nav-item{background:none;border:none;display:flex;flex-direction:column;align-items:center;gap:4px;padding:4px 8px;color:var(--secondary-text);}
+  .nav-item svg{stroke:currentColor;}
+  .nav-item span.label{font-size:11px;font-weight:600;color:currentColor;}
+  .nav-item .nav-dot{width:4px;height:4px;border-radius:50%;background:transparent;}
+  .nav-item.active{color:var(--brand-red);}
+  .nav-item.active span.label{font-weight:700;}
+  .nav-item.active .nav-dot{background:var(--brand-red);}
+</style>
+</head>
+<body>
+<div class="phone">
+  <div class="appbar">
+    <span class="back">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#172B4D" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/></svg>
+    </span>
+    <span class="title">Amir Filling Station</span>
+  </div>
+
+  <div class="content">
+    <!-- Avatar + stat row, side by side - Staff stat intentionally
+         dropped, only Nozzles and Years remain. -->
+    <div class="head-row">
+      <div class="avatar">
+        <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-7 8-7s8 3 8 7"/></svg>
+      </div>
+      <div class="stat"><div class="value">10</div><div class="label">Nozzles</div></div>
+      <div class="stat"><div class="value">5</div><div class="label">Years</div></div>
+    </div>
+
+    <div class="owner-name">Tahir Mukhtar</div>
+    <div class="owner-address">Multan Road Pattoki, Pakistan</div>
+
+    <button class="edit-btn" onclick="alert('Edit Profile')">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+      Edit Profile
+    </button>
+
+    <div class="list">
+      <div class="list-row" onclick="alert('Account Details')">
+        <svg class="leading" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M20.4 14.5L16 10 4 20"/><rect x="2" y="4" width="20" height="14" rx="2"/></svg>
+        <span class="label">Account Details</span>
+        <svg class="trailing" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
+      </div>
+      <div class="list-row" onclick="alert('Sale Management')">
+        <svg class="leading" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M2 9V7a2 2 0 012-2h16a2 2 0 012 2v2"/><rect x="2" y="9" width="20" height="11" rx="2"/><path d="M12 13v4"/><path d="M9 15h6"/></svg>
+        <span class="label">Sale Management</span>
+        <svg class="trailing" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
+      </div>
+      <div class="list-row" onclick="alert('Help & Support')">
+        <svg class="leading" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg>
+        <span class="label">Help &amp; Support</span>
+        <svg class="trailing" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
+      </div>
+    </div>
+
+    <button class="logout-btn" onclick="alert('Log Out')">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#D64545" stroke-width="2"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/></svg>
+      Log Out
+    </button>
+  </div>
+
+  <nav class="navbar">
+    <button class="nav-item active">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-8 9 8"/><path d="M5 10v10a1 1 0 001 1h4v-6h4v6h4a1 1 0 001-1V10"/></svg>
+      <span class="label">Dashboard</span>
+      <span class="nav-dot"></span>
+    </button>
+    <button class="nav-item">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 22V4a2 2 0 012-2h6a2 2 0 012 2v18"/><path d="M4 10h10"/><path d="M14 8l3 2v8a2 2 0 002 2 2 2 0 002-2v-6l-3-3"/></svg>
+      <span class="label">Nozzles</span>
+      <span class="nav-dot"></span>
+    </button>
+    <button class="nav-item">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2.69s-5 5.02-5 9.31a5 5 0 0010 0c0-4.29-5-9.31-5-9.31z"/></svg>
+      <span class="label">Tanks</span>
+      <span class="nav-dot"></span>
+    </button>
+    <button class="nav-item">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7l9-4 9 4-9 4-9-4z"/><path d="M3 12l9 4 9-4"/><path d="M3 17l9 4 9-4"/></svg>
+      <span class="label">Stock</span>
+      <span class="nav-dot"></span>
+    </button>
+    <button class="nav-item">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h9l5 5v13a1 1 0 01-1 1H6a1 1 0 01-1-1V4a1 1 0 011-1z"/><path d="M9 12h6M9 16h6M9 8h2"/></svg>
+      <span class="label">Logs</span>
+      <span class="nav-dot"></span>
+    </button>
+  </nav>
+</div>
+</body>
+</html>

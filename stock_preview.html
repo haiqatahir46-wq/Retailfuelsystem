@@ -1,0 +1,276 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>PARCO Stock Screen Preview</title>
+<style>
+  :root{
+    --brand-red:#D71920;--red-light:#FFF1F2;--primary-text:#172B4D;--secondary-text:#5E6C84;
+    --bg:#F6F8FB;--card-bg:#FFFFFF;--border:#E2E8F0;--dispensing:#22A06B;--attention:#E08E0B;--fault:#D64545;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;background:#EDEFF3;font-family:"Segoe UI",system-ui,-apple-system,sans-serif;padding:24px;}
+  .phone{position:relative;width:430px;height:932px;background:var(--bg);border-radius:46px;box-shadow:0 24px 60px rgba(23,43,77,0.25);border:10px solid #111;display:flex;flex-direction:column;overflow:hidden;}
+  .content{flex:1;min-height:0;overflow-y:auto;padding:16px 20px 20px;}
+
+  /* Plain station photo banner - deliberately NOT wave-clipped. */
+  .scene-plain{position:relative;width:100%;height:150px;flex-shrink:0;overflow:hidden;cursor:pointer;}
+  .scene-plain img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center 62%;}
+
+  /* Top bar rules below are no longer used on this screen (removed per
+     request in favor of the plain photo banner above) - left in place,
+     harmless, in case a future screen wants them back. */
+  .topbar{
+    flex-shrink:0;
+    padding:14px 20px 14px;
+    display:flex;align-items:center;justify-content:space-between;
+    background:var(--card-bg);
+    border-bottom:1px solid var(--border);
+  }
+  .brand{display:flex;align-items:center;gap:8px;}
+  .hamburger{
+    width:32px;height:32px;display:flex;align-items:center;justify-content:center;
+    margin-right:2px;cursor:pointer;flex-shrink:0;
+  }
+  .brand-badge{
+    width:28px;height:28px;border-radius:6px;background:var(--brand-red);
+    display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:13px;
+  }
+  .brand-name{font-weight:700;font-size:16px;color:var(--primary-text);}
+  .topbar-icons{display:flex;align-items:center;gap:12px;}
+  .icon-btn{width:30px;height:30px;display:flex;align-items:center;justify-content:center;cursor:pointer;border-radius:8px;}
+  .icon-btn:hover{background:var(--bg);}
+  .profile-avatar{
+    width:28px;height:28px;border-radius:50%;background:var(--red-light);
+    display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;
+  }
+  .profile-avatar svg{stroke:var(--brand-red);}
+  .bell-wrap{position:relative;}
+  .bell-dot{position:absolute;top:-2px;right:-2px;width:8px;height:8px;border-radius:50%;background:var(--brand-red);border:1.5px solid #fff;}
+
+  /* Station row - sits right under the top bar, above the switcher */
+  .station-row{padding:10px 20px 10px;display:flex;align-items:center;gap:6px;color:var(--primary-text);font-weight:600;font-size:14px;background:var(--card-bg);cursor:pointer;flex-shrink:0;}
+
+  .switcher{display:flex;gap:8px;margin-top:14px;}
+  .chip{flex:1;border-radius:12px;padding:12px 6px;display:flex;flex-direction:column;align-items:center;gap:6px;cursor:pointer;}
+  .chip.inactive{background:var(--card-bg);border:1px solid var(--border);}
+  .chip.active{background:var(--brand-red);border:1px solid var(--brand-red);}
+  .chip-value{font-size:15px;font-weight:800;color:var(--secondary-text);margin-top:-2px;}
+  .chip-label{font-size:11px;font-weight:700;text-align:center;color:var(--secondary-text);}
+  .chip.active .chip-label{color:#fff;}
+
+  .tank-card{background:var(--card-bg);border-radius:16px;padding:16px;margin-top:14px;box-shadow:0 1px 4px rgba(23,43,77,0.06);}
+  .tank-head{display:flex;justify-content:space-between;align-items:center;}
+  .tank-name{font-size:15px;font-weight:700;color:var(--primary-text);}
+  .status-pill{display:inline-flex;align-items:center;gap:5px;padding:5px 10px;border-radius:20px;font-size:11px;font-weight:700;}
+  .status-dot{width:6px;height:6px;border-radius:50%;}
+  .status-healthy{background:rgba(34,160,107,0.12);color:var(--dispensing);}
+  .status-healthy .status-dot{background:var(--dispensing);}
+  .status-low{background:rgba(224,142,11,0.12);color:var(--attention);}
+  .status-low .status-dot{background:var(--attention);}
+  .status-critical{background:rgba(214,69,69,0.12);color:var(--fault);}
+  .status-critical .status-dot{background:var(--fault);}
+
+  .bar-track{height:8px;border-radius:6px;background:var(--bg);margin-top:10px;overflow:hidden;}
+  .bar-fill{height:100%;border-radius:6px;}
+  .pct{text-align:right;font-size:11px;font-weight:700;margin-top:4px;}
+
+  .stat-row{display:flex;margin-top:10px;}
+  .stat{flex:1;}
+  .stat .value{font-size:13.5px;font-weight:700;color:var(--primary-text);}
+  .stat .label{font-size:10.5px;color:var(--secondary-text);margin-top:2px;}
+
+  .btn-row{display:flex;gap:10px;margin-top:14px;}
+  .btn-row button{flex:1;height:42px;border-radius:12px;font-size:12.5px;font-weight:700;cursor:pointer;}
+  .set-threshold{background:transparent;border:1.4px solid var(--border);color:var(--secondary-text);}
+  .create-reorder{background:var(--brand-red);border:none;color:#fff;}
+
+  .section-title{font-size:15px;font-weight:700;color:var(--primary-text);margin:20px 0 12px;}
+  .po-card{display:flex;align-items:flex-start;background:var(--card-bg);border-radius:14px;padding:14px;margin-bottom:10px;box-shadow:0 1px 4px rgba(23,43,77,0.06);}
+  .po-left{flex:4;}
+  .po-num{font-size:13px;font-weight:700;color:var(--primary-text);}
+  .po-date{font-size:11px;color:var(--secondary-text);margin-top:2px;}
+  .po-mid{flex:4;font-size:12.5px;font-weight:600;color:var(--primary-text);}
+  .po-right{flex:4;display:flex;flex-direction:column;align-items:flex-end;gap:4px;}
+  .po-pill{font-size:10px;font-weight:700;padding:3px 8px;border-radius:20px;}
+  .po-delivered{background:rgba(34,160,107,0.12);color:var(--dispensing);}
+  .po-vehicle{background:var(--bg);color:var(--secondary-text);}
+
+  /* Drawer - opened via the top bar's hamburger */
+  .drawer-overlay{position:absolute;inset:0;background:rgba(23,43,77,0.35);z-index:10;display:none;}
+  .drawer-overlay.open{display:block;}
+  .drawer{
+    position:absolute;top:0;bottom:0;left:0;width:78%;max-width:320px;
+    background:#fff;z-index:11;transform:translateX(-100%);
+    transition:transform .25s ease;display:flex;flex-direction:column;
+    box-shadow:4px 0 16px rgba(0,0,0,.15);
+  }
+  .drawer.open{transform:translateX(0);}
+  .drawer-head{padding:28px 20px 18px;display:flex;align-items:center;gap:12px;border-bottom:1px solid var(--border);}
+  .drawer-avatar{width:48px;height:48px;border-radius:50%;background:var(--red-light);display:flex;align-items:center;justify-content:center;color:var(--brand-red);font-weight:700;font-size:18px;flex-shrink:0;}
+  .drawer-name{font-weight:700;font-size:15px;color:var(--primary-text);}
+  .drawer-email{font-size:12px;color:var(--secondary-text);margin-top:2px;}
+  .drawer-items{flex:1;padding:10px 8px;display:flex;flex-direction:column;}
+  .drawer-item{display:flex;align-items:center;gap:14px;padding:12px 12px;border-radius:10px;font-size:14px;font-weight:600;color:var(--primary-text);cursor:pointer;}
+  .drawer-item:hover{background:var(--bg);}
+  .drawer-item svg{stroke:var(--secondary-text);flex-shrink:0;}
+  .drawer-item.logout{color:var(--brand-red);margin-top:auto;}
+  .drawer-item.logout svg{stroke:var(--brand-red);}
+  .drawer-close{position:absolute;top:20px;right:16px;cursor:pointer;}
+
+  .navbar{background:#fff;border-top:1px solid var(--border);padding:8px 0 10px;display:flex;justify-content:space-evenly;}
+  .nav-item{background:none;border:none;display:flex;flex-direction:column;align-items:center;gap:4px;padding:4px 8px;color:var(--secondary-text);}
+  .nav-item svg{stroke:currentColor;}
+  .nav-item span.label{font-size:11px;font-weight:600;color:currentColor;}
+  .nav-item .nav-dot{width:4px;height:4px;border-radius:50%;background:transparent;}
+  .nav-item.active{color:var(--brand-red);}
+  .nav-item.active span.label{font-weight:700;}
+  .nav-item.active .nav-dot{background:var(--brand-red);}
+</style>
+</head>
+<body>
+<div class="phone">
+  <!-- Location first, then the photo right below it. -->
+  <div class="station-row" onclick="alert('Switch station')">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#D71920" stroke-width="2"><path d="M12 22s7-7.5 7-12a7 7 0 10-14 0c0 4.5 7 12 7 12z"/><circle cx="12" cy="10" r="2.5"/></svg>
+    Amir Filling, Pattoki
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#5E6C84" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+  </div>
+
+  <!-- Plain photo banner - deliberately NOT wave-clipped (unlike
+       Dashboard/Splash/Login/Signup), just a straight-edged rectangle.
+       The hamburger drawer is still reachable by swiping in from the
+       left edge, same as the real Scaffold's drawer behavior. -->
+  <div class="scene-plain" onclick="document.getElementById('drawer').classList.add('open');document.getElementById('drawerOverlay').classList.add('open');" title="Swipe from the left edge to open the menu">
+    <img src="station.webp" alt="TOTAL PARCO filling station">
+  </div>
+
+  <div class="content">
+    <!-- Petrol - Current Volume = 25,000 L capacity - 18,000 L sold today
+         = 7,000 L (28%). Below threshold*0.5 (9,000 L) -> Critical. Petrol
+         sells the most per day of the three grades, so it depletes
+         fastest - this is now computed from real today's-sales data
+         (same PeriodSales used on Dashboard/Sales Reports), not a
+         hand-picked number. -->
+    <div class="tank-card">
+      <div class="tank-head">
+        <span class="tank-name">Petrol</span>
+        <span class="status-pill status-critical"><span class="status-dot"></span>Critical</span>
+      </div>
+      <div class="bar-track"><div class="bar-fill" style="width:28%;background:var(--fault);"></div></div>
+      <div class="pct" style="color:var(--fault);">28%</div>
+      <div class="stat-row">
+        <div class="stat"><div class="value">7,000 L</div><div class="label">Current Volume</div></div>
+        <div class="stat"><div class="value">25,000 L</div><div class="label">Tank Capacity</div></div>
+        <div class="stat"><div class="value">18,000 L</div><div class="label">Threshold</div></div>
+      </div>
+      <div class="btn-row">
+        <button class="set-threshold" onclick="alert('Set Threshold - Petrol')">Set Threshold</button>
+        <button class="create-reorder" onclick="alert('Create Reorder - Petrol')">Create Reorder</button>
+      </div>
+    </div>
+
+    <!-- Diesel - 25,000 L - 9,000 L sold today = 16,000 L (64%). Between
+         threshold*0.5 (9,000) and threshold (18,000) -> Low. -->
+    <div class="tank-card">
+      <div class="tank-head">
+        <span class="tank-name">Diesel</span>
+        <span class="status-pill status-low"><span class="status-dot"></span>Low</span>
+      </div>
+      <div class="bar-track"><div class="bar-fill" style="width:64%;background:var(--attention);"></div></div>
+      <div class="pct" style="color:var(--attention);">64%</div>
+      <div class="stat-row">
+        <div class="stat"><div class="value">16,000 L</div><div class="label">Current Volume</div></div>
+        <div class="stat"><div class="value">25,000 L</div><div class="label">Tank Capacity</div></div>
+        <div class="stat"><div class="value">18,000 L</div><div class="label">Threshold</div></div>
+      </div>
+      <div class="btn-row">
+        <button class="set-threshold" onclick="alert('Set Threshold - Diesel')">Set Threshold</button>
+        <button class="create-reorder" onclick="alert('Create Reorder - Diesel')">Create Reorder</button>
+      </div>
+    </div>
+
+    <!-- Hi-Octane - 25,000 L - 3,000 L sold today = 22,000 L (88%). At or
+         above threshold (18,000) -> Healthy. Hi-Octane sells the least per
+         day, so it stays fullest longest. -->
+    <div class="tank-card">
+      <div class="tank-head">
+        <span class="tank-name">Hi-Octane</span>
+        <span class="status-pill status-healthy"><span class="status-dot"></span>Healthy</span>
+      </div>
+      <div class="bar-track"><div class="bar-fill" style="width:88%;background:var(--dispensing);"></div></div>
+      <div class="pct" style="color:var(--dispensing);">88%</div>
+      <div class="stat-row">
+        <div class="stat"><div class="value">22,000 L</div><div class="label">Current Volume</div></div>
+        <div class="stat"><div class="value">25,000 L</div><div class="label">Tank Capacity</div></div>
+        <div class="stat"><div class="value">18,000 L</div><div class="label">Threshold</div></div>
+      </div>
+      <div class="btn-row">
+        <button class="set-threshold" onclick="alert('Set Threshold - Hi-Octane')">Set Threshold</button>
+        <button class="create-reorder" onclick="alert('Create Reorder - Hi-Octane')">Create Reorder</button>
+      </div>
+    </div>
+
+    <div class="section-title">Recent Purchased Orders</div>
+    <div class="po-card">
+      <div class="po-left"><div class="po-num">PO-2026-0058</div><div class="po-date">15 May 2026</div></div>
+      <div class="po-mid">Diesel &middot; 20,000 L</div>
+      <div class="po-right"><span class="po-pill po-delivered">Delivered</span><span class="po-pill po-vehicle">Carriage</span></div>
+    </div>
+    <div class="po-card">
+      <div class="po-left"><div class="po-num">PO-2026-0058</div><div class="po-date">15 May 2026</div></div>
+      <div class="po-mid">Petrol &middot; 20,000 L</div>
+      <div class="po-right"><span class="po-pill po-delivered">Delivered</span><span class="po-pill po-vehicle">Self</span></div>
+    </div>
+    <div class="po-card">
+      <div class="po-left"><div class="po-num">PO-2026-0058</div><div class="po-date">15 May 2026</div></div>
+      <div class="po-mid">Hi-Octane &middot; 20,000 L</div>
+      <div class="po-right"><span class="po-pill po-delivered">Delivered</span><span class="po-pill po-vehicle">Carriage</span></div>
+    </div>
+  </div>
+
+  <nav class="navbar">
+    <button class="nav-item">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-8 9 8"/><path d="M5 10v10a1 1 0 001 1h4v-6h4v6h4a1 1 0 001-1V10"/></svg>
+      <span class="label">Dashboard</span><span class="nav-dot"></span>
+    </button>
+    <button class="nav-item">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 22V4a2 2 0 012-2h6a2 2 0 012 2v18"/><path d="M4 10h10"/><path d="M14 8l3 2v8a2 2 0 002 2 2 2 0 002-2v-6l-3-3"/></svg>
+      <span class="label">Nozzles</span><span class="nav-dot"></span>
+    </button>
+    <button class="nav-item">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2.69s-5 5.02-5 9.31a5 5 0 0010 0c0-4.29-5-9.31-5-9.31z"/></svg>
+      <span class="label">Tanks</span><span class="nav-dot"></span>
+    </button>
+    <button class="nav-item active">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7l9-4 9 4-9 4-9-4z"/><path d="M3 12l9 4 9-4"/><path d="M3 17l9 4 9-4"/></svg>
+      <span class="label">Stock</span><span class="nav-dot"></span>
+    </button>
+    <button class="nav-item">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h9l5 5v13a1 1 0 01-1 1H6a1 1 0 01-1-1V4a1 1 0 011-1z"/><path d="M9 12h6M9 16h6M9 8h2"/></svg>
+      <span class="label">Logs</span><span class="nav-dot"></span>
+    </button>
+  </nav>
+
+  <div class="drawer-overlay" id="drawerOverlay" onclick="document.getElementById('drawer').classList.remove('open');this.classList.remove('open');"></div>
+  <div class="drawer" id="drawer">
+    <div class="drawer-close" onclick="document.getElementById('drawer').classList.remove('open');document.getElementById('drawerOverlay').classList.remove('open');">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#5E6C84" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
+    </div>
+    <div class="drawer-head">
+      <div class="drawer-avatar">H</div>
+      <div>
+        <div class="drawer-name">Haiqa Tahir</div>
+        <div class="drawer-email">haiqa@parco.example</div>
+      </div>
+    </div>
+    <div class="drawer-items">
+      <div class="drawer-item"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-7 8-7s8 3 8 7"/></svg>Profile</div>
+      <div class="drawer-item"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06A1.65 1.65 0 009 4.6a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09A1.65 1.65 0 0015 4.6a1.65 1.65 0 001.82-.33l.06-.06a2 2 0 112.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>Settings</div>
+      <div class="drawer-item"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg>Help Center</div>
+      <div class="drawer-item logout"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/></svg>Log Out</div>
+    </div>
+  </div>
+</div>
+</body>
+</html>

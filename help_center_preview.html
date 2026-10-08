@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>PARCO Help Center Preview</title>
+<style>
+  :root{
+    --brand-red:#D71920;--red-light:#FFF1F2;--primary-text:#172B4D;--secondary-text:#5E6C84;
+    --bg:#F6F8FB;--card-bg:#FFFFFF;--border:#E2E8F0;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;background:#EDEFF3;font-family:"Segoe UI",system-ui,-apple-system,sans-serif;padding:24px;}
+  .phone{width:430px;height:932px;background:var(--bg);border-radius:46px;box-shadow:0 24px 60px rgba(23,43,77,0.25);border:10px solid #111;display:flex;flex-direction:column;overflow:hidden;}
+  .appbar{padding:14px 16px;display:flex;align-items:center;gap:10px;background:var(--card-bg);border-bottom:1px solid var(--border);}
+  .appbar .back{cursor:pointer;display:flex;}
+  .appbar .title{font-size:17px;font-weight:700;color:var(--primary-text);}
+  .content{flex:1;overflow-y:auto;padding:20px 20px 24px;}
+  .section-label{font-size:12px;font-weight:700;letter-spacing:0.5px;color:var(--secondary-text);margin-bottom:12px;}
+  .faq-tile{background:var(--card-bg);border-radius:12px;margin-bottom:8px;box-shadow:0 1px 4px rgba(23,43,77,0.04);overflow:hidden;}
+  .faq-tile summary{list-style:none;cursor:pointer;padding:14px;display:flex;align-items:center;justify-content:space-between;gap:10px;}
+  .faq-tile summary::-webkit-details-marker{display:none;}
+  .faq-question{font-size:13.5px;font-weight:700;color:var(--primary-text);}
+  .chevron{width:20px;height:20px;flex:none;color:var(--secondary-text);transition:transform .15s;}
+  .faq-tile[open] .chevron{color:var(--brand-red);transform:rotate(180deg);}
+  .faq-answer{font-size:13px;line-height:1.4;color:var(--secondary-text);padding:0 14px 14px;}
+  .support-card{margin-top:20px;background:var(--card-bg);border-radius:14px;padding:16px;box-shadow:0 1px 4px rgba(23,43,77,0.04);}
+  .support-title{font-size:14px;font-weight:700;color:var(--primary-text);margin-bottom:4px;}
+  .support-sub{font-size:12.5px;color:var(--secondary-text);margin-bottom:12px;}
+  .support-btn{height:46px;width:100%;border-radius:12px;background:var(--brand-red);border:none;color:#fff;font-size:14px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;}
+</style>
+</head>
+<body>
+<div class="phone">
+  <div class="appbar">
+    <span class="back"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#172B4D" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/></svg></span>
+    <span class="title">Help Center</span>
+  </div>
+  <div class="content">
+    <div class="section-label">FREQUENTLY ASKED QUESTIONS</div>
+
+    <details class="faq-tile">
+      <summary>
+        <span class="faq-question">How do I add a new station?</span>
+        <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+      </summary>
+      <div class="faq-answer">Go to Select Station from the bottom navigation, then tap "+ Add Station" and fill in the station name, location, nozzles and storage capacity.</div>
+    </details>
+
+    <details class="faq-tile" open>
+      <summary>
+        <span class="faq-question">How is revenue calculated?</span>
+        <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+      </summary>
+      <div class="faq-answer">Revenue = Litres Sold × Price per Litre, for each fuel grade. This is computed automatically on the Dashboard and Sales report screens - you never need to enter it manually.</div>
+    </details>
+
+    <details class="faq-tile">
+      <summary>
+        <span class="faq-question">Can I switch between stations?</span>
+        <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+      </summary>
+      <div class="faq-answer">Yes - tap the station name at the top of the Dashboard, or use Select Station from the navigation, to switch which station's data you're viewing.</div>
+    </details>
+
+    <details class="faq-tile">
+      <summary>
+        <span class="faq-question">What does the low-stock alert mean?</span>
+        <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+      </summary>
+      <div class="faq-answer">It means a tank's theoretical stock has dropped below its reorder threshold. Tap the alert on the Dashboard to go to Tanks and place a reorder.</div>
+    </details>
+
+    <div class="support-card">
+      <div class="support-title">Still need help?</div>
+      <div class="support-sub">Our support team usually replies within a few hours.</div>
+      <button class="support-btn" onclick="alert('Contact Support')">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><path d="M4 4h16v16H4z" opacity="0"/><path d="M22 6l-10 7L2 6"/><rect x="2" y="4" width="20" height="16" rx="2"/></svg>
+        Contact Support
+      </button>
+    </div>
+  </div>
+</div>
+</body>
+</html>

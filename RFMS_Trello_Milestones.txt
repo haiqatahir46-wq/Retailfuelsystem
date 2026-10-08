@@ -1,0 +1,98 @@
+RETAIL FUEL MANAGEMENT SYSTEM — TRELLO IMPORT
+================================================
+How to use: In Trello, create each "List:" as a new list. Click "Add a card",
+paste all the "-" lines under that list at once — Trello will offer to add
+each line as a separate card.
+
+=== TRACK A: FYP DELIVERABLE (30-week academic plan) ===
+
+List: 1. Kickoff & Requirements (Wk 1-3)
+- Interview real fuel station staff / confirm workflow pain points
+- Finalize MVP scope (3 grades: Petrol, Diesel, High Octane; Manager + Operator roles)
+- Write success criteria & acceptance criteria
+- Get supervisor approval on scope
+- Set up GitHub repo, Trello board, weekly sync cadence
+
+List: 2. Design & Architecture (Wk 4-9)
+- Use-case diagrams & main workflow diagrams
+- Low-fi screen sketches (detailed front-end TBD separately)
+- ER diagram: users, employees, shifts, fuel_products, tanks, pumps, nozzles,
+  price_history, sales, payments, deliveries, stock_ledger, tank_readings,
+  stock_adjustments, audit_log
+- Define DB constraints, FKs, positive-value checks, security roles
+- Set up Supabase dev project
+- System architecture diagram (Flutter + Supabase + simulator/hardware path)
+
+List: 3. Admin Foundation (Wk 10-12)
+- Login + role-based access control (Manager/Operator)
+- Employee CRUD (add/deactivate)
+- Shift open/close logic (opening readings, opening cash)
+- Fuel-product, tank, pump/nozzle, price setup screens + backend
+
+List: 4. Core Sales Module (Wk 13-16)
+- Fuel-sale entry workflow via Dart pump/tank simulator
+- Atomic transaction: sale + payment + stock movement saved together
+- Sale amount & theoretical stock calculation logic
+- Unit tests for sale calculations
+
+List: 5. Inventory & Costing (Wk 17-19)
+- Delivery entry module (supplier, grade, liters, cost, invoice ref)
+- Weighted-average cost calculation on delivery
+- Stock ledger implementation
+- Physical tank reading & stock-variance module
+
+List: 6. Reporting & Alerts (Wk 20-22)
+- Low-stock warning + simple reorder suggestion
+- Shift / daily / monthly sales reports
+- Gross-profit report (sales revenue - COGS)
+- Export/print functionality
+
+List: 7. Integration & Hardening (Wk 23-25)
+- Integrate all modules end-to-end
+- Input validation, error handling, navigation polish
+- Working beta build
+
+List: 8. Testing & QA (Wk 26-27)
+- Unit tests: sale amount, weighted cost, COGS, gross profit, variance, reorder
+- Database tests: required fields, permissions, transactions, invalid values
+- Integration tests: full flow (open shift -> sale -> delivery -> stock check -> report -> close shift)
+- Security & user-acceptance testing
+- Fix major defects
+
+List: 9. Deployment & Documentation (Wk 28-30)
+- Deploy release-candidate build
+- Write user guide + technical guide
+- Finalize diagrams and final report
+- Run final demonstration, collect supervisor feedback
+- Submit final project package
+
+=== TRACK B: REAL HARDWARE INTEGRATION (parallel / post-FYP, for actual station) ===
+
+List: 10. Hardware — Chip & Sensor Integration
+- Research/select MCU board (ESP32 / Arduino / Raspberry Pi) for motherboard chip
+- Define sensor set: flow meter (pump), tank level sensor
+- Wiring/electrical plan for safe read-only data tap (no pump control)
+- Write firmware to read pump/tank data from the chip
+- Choose comms protocol chip -> backend (WiFi + MQTT/REST, or BLE)
+- Prototype chip -> Supabase data pipeline
+- Bench test with simulated signals before live station
+- Field test at dad's station on a non-critical line
+- Safety/compliance review before connecting to live pump wiring
+- Swap simulator data source for real chip feed once validated
+- Handle connection-loss/offline buffering on the chip side
+
+=== TRACK C: MARKET LAUNCH (Play Store / App Store) ===
+
+List: 11. Production Readiness
+- Production branding: app icon, splash screen, name
+- Apple Developer account + Google Play Console account setup
+- Privacy policy & terms of service (required for both stores)
+- Data handling / compliance review (customer & sales data)
+
+List: 12. Beta & Store Submission
+- Internal beta with dad's staff (TestFlight + Play Internal Testing)
+- Collect real-world usage feedback, fix issues
+- Store listing assets: screenshots, description, keywords
+- Submit to Google Play Store
+- Submit to Apple App Store
+- Post-launch monitoring, crash reporting, support plan

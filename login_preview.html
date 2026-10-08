@@ -1,0 +1,260 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>PARCO Login Screen Preview</title>
+<style>
+  :root{
+    --brand-red:#D71920;
+    --primary-text:#172B4D;
+    --secondary-text:#5E6C84;
+    --bg:#F6F8FB;
+    --card-bg:#FFFFFF;
+    --border:#E2E8F0;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0;
+    min-height:100vh;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    background:#EDEFF3;
+    font-family:"Segoe UI",system-ui,-apple-system,sans-serif;
+    padding:24px;
+  }
+  .phone{
+    position:relative;
+    width:430px;
+    height:932px;
+    border-radius:46px;
+    box-shadow:0 24px 60px rgba(23,43,77,0.25);
+    overflow:hidden;
+    border:10px solid #111;
+    background:#fff;
+  }
+
+  /* ---------- Station image panel (same wave as the splash screen) ---------- */
+  .scene{
+    position:absolute;
+    top:0;left:0;right:0;
+    height:330px;
+    background:#fff;
+    clip-path:url(#waveClipLogin);
+  }
+  .scene img{
+    position:absolute;
+    inset:0;
+    width:100%;
+    height:100%;
+    object-fit:cover;
+    object-position:center 40%;
+  }
+
+  /* ---------- Sign-in form panel ---------- */
+  .form-panel{
+    position:absolute;
+    left:0;right:0;bottom:0;
+    height:602px;
+    background:var(--card-bg);
+    padding:28px 28px 32px;
+    display:flex;
+    flex-direction:column;
+    animation:formIn .9s cubic-bezier(.16,.84,.44,1) both;
+  }
+  @keyframes formIn{
+    from{ transform:translateY(30px); opacity:0; }
+    to{ transform:translateY(0); opacity:1; }
+  }
+
+  .brand-block{
+    text-align:center;
+    margin-bottom:26px;
+  }
+  .brand-block h2{
+    margin:0;
+    font-size:20px;
+    font-weight:800;
+    color:var(--primary-text);
+    letter-spacing:1px;
+  }
+  .brand-block span{
+    display:block;
+    margin-top:4px;
+    font-size:12px;
+    color:var(--secondary-text);
+    font-weight:600;
+  }
+
+  .signin-block{
+    text-align:center;
+    margin-bottom:26px;
+  }
+  .signin-block h1{
+    margin:0;
+    font-size:23px;
+    font-weight:700;
+    color:var(--primary-text);
+  }
+  .signin-block p{
+    margin:6px 0 0;
+    font-size:13px;
+    color:var(--secondary-text);
+  }
+
+  .field{
+    margin-bottom:16px;
+  }
+  .field label{
+    display:block;
+    font-size:12px;
+    font-weight:600;
+    color:var(--secondary-text);
+    margin-bottom:6px;
+  }
+  .field input{
+    width:100%;
+    height:50px;
+    border-radius:12px;
+    border:1px solid var(--border);
+    background:var(--bg);
+    padding:0 16px;
+    font-size:14px;
+    color:var(--primary-text);
+    outline:none;
+  }
+  .field input:focus{
+    border-color:var(--brand-red);
+    background:#fff;
+  }
+  .field input::placeholder{color:#9AA5B8;}
+
+  .row-between{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    margin:4px 0 26px;
+  }
+  .remember{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    font-size:13px;
+    color:var(--secondary-text);
+    font-weight:600;
+  }
+  .remember input{
+    width:16px;height:16px;
+    accent-color:var(--brand-red);
+  }
+  .forgot{
+    font-size:13px;
+    font-weight:700;
+    color:var(--brand-red);
+    text-decoration:none;
+  }
+
+  .signin-btn{
+    width:100%;
+    height:52px;
+    border:none;
+    border-radius:14px;
+    background:var(--brand-red);
+    color:#fff;
+    font-size:15px;
+    font-weight:700;
+    letter-spacing:.3px;
+    cursor:pointer;
+    box-shadow:0 10px 22px rgba(215,25,32,.3);
+  }
+
+  .divider{
+    display:flex;
+    align-items:center;
+    gap:12px;
+    margin:20px 0;
+  }
+  .divider::before,.divider::after{
+    content:"";
+    flex:1;
+    height:1px;
+    background:var(--border);
+  }
+  .divider span{
+    font-size:12px;
+    font-weight:600;
+    color:var(--secondary-text);
+  }
+
+  .create-btn{
+    width:100%;
+    height:52px;
+    border-radius:14px;
+    background:#fff;
+    border:1.5px solid var(--brand-red);
+    color:var(--brand-red);
+    font-size:15px;
+    font-weight:700;
+    letter-spacing:.3px;
+    cursor:pointer;
+  }
+</style>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute">
+  <defs>
+    <!-- Same fixed wave shape as the splash screen, rescaled to this
+         panel's smaller height. -->
+    <clipPath id="waveClipLogin" clipPathUnits="userSpaceOnUse">
+      <path d="M0,254 C121,298 176,298 215,273 C254,247 309,203 430,229 L430,0 L0,0 Z"/>
+    </clipPath>
+  </defs>
+</svg>
+
+<div class="phone">
+
+  <div class="scene">
+    <img src="station.webp" alt="TOTAL PARCO filling station">
+  </div>
+
+  <div class="form-panel">
+    <div class="brand-block">
+      <h2>FUEL OPS</h2>
+      <span>Fuel Management System</span>
+    </div>
+
+    <div class="signin-block">
+      <h1>Sign In</h1>
+      <p>Access your station operations account</p>
+    </div>
+
+    <form onsubmit="return false;">
+      <div class="field">
+        <label for="user">Email / Username</label>
+        <input id="user" type="text" placeholder="Enter your email or username">
+      </div>
+      <div class="field">
+        <label for="pass">Password</label>
+        <input id="pass" type="password" placeholder="Enter your password">
+      </div>
+
+      <div class="row-between">
+        <label class="remember">
+          <input type="checkbox">
+          Remember me
+        </label>
+        <a class="forgot" href="#">Forgot Password?</a>
+      </div>
+
+      <button class="signin-btn" type="submit">Sign In</button>
+    </form>
+
+    <div class="divider"><span>OR</span></div>
+
+    <button class="create-btn" type="button">Create Account</button>
+  </div>
+
+</div>
+</body>
+</html>

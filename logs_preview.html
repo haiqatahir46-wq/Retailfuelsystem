@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>PARCO Logs Screen Preview</title>
+<style>
+  :root{
+    --brand-red:#D71920;--red-light:#FFF1F2;--primary-text:#172B4D;--secondary-text:#5E6C84;
+    --bg:#F6F8FB;--card-bg:#FFFFFF;--border:#E2E8F0;--dispensing:#22A06B;--attention:#E08E0B;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;background:#EDEFF3;font-family:"Segoe UI",system-ui,-apple-system,sans-serif;padding:24px;}
+  .phone{width:430px;height:932px;background:var(--bg);border-radius:46px;box-shadow:0 24px 60px rgba(23,43,77,0.25);border:10px solid #111;display:flex;flex-direction:column;overflow:hidden;}
+  .appbar{padding:14px 16px;display:flex;align-items:center;background:var(--card-bg);border-bottom:1px solid var(--border);}
+  .appbar .title{font-size:17px;font-weight:700;color:var(--primary-text);}
+  .content{flex:1;overflow-y:auto;padding:16px 20px 20px;}
+  .heading{font-size:16px;font-weight:700;color:var(--primary-text);margin-bottom:16px;}
+  .field{margin-bottom:14px;}
+  .field label{display:block;font-size:12px;font-weight:600;color:var(--secondary-text);margin-bottom:6px;}
+  .field select, .field input{
+    width:100%;height:48px;border-radius:12px;border:1px solid var(--border);
+    background:var(--bg);padding:0 16px;font-size:14px;color:var(--primary-text);
+    font-family:inherit;appearance:none;-webkit-appearance:none;
+  }
+  .field.select-wrap{position:relative;}
+  .field.select-wrap svg{position:absolute;right:14px;bottom:16px;pointer-events:none;stroke:var(--secondary-text);}
+  .btn-row{display:flex;gap:12px;margin-top:6px;}
+  .btn-row button{flex:1;height:48px;border-radius:14px;font-size:14px;font-weight:700;cursor:pointer;}
+  .save-btn{background:var(--brand-red);color:#fff;border:none;}
+  .clear-btn{background:transparent;color:var(--secondary-text);border:1.5px solid var(--border);}
+  .section-title{font-size:15px;font-weight:700;color:var(--primary-text);margin:24px 0 12px;}
+  .table{background:var(--card-bg);border-radius:14px;box-shadow:0 1px 4px rgba(23,43,77,0.06);overflow:hidden;}
+  .table-head{display:flex;padding:12px 14px 10px;border-bottom:1px solid var(--border);}
+  .table-head span{flex:1;font-size:11px;font-weight:700;color:var(--secondary-text);}
+  .table-head span:last-child{text-align:right;}
+  .table-row{display:flex;align-items:center;padding:10px 14px;}
+  .table-row:not(:last-child){border-bottom:1px solid var(--border);}
+  .table-row .cell{flex:1;font-size:13px;color:var(--primary-text);}
+  .table-row .cell.vehicle{font-weight:600;}
+  .table-row .status-wrap{flex:1;display:flex;justify-content:flex-end;}
+  .pill{font-size:10.5px;font-weight:700;padding:4px 8px;border-radius:20px;}
+  .pill.completed{background:rgba(34,160,107,0.12);color:var(--dispensing);}
+  .pill.pending{background:rgba(224,142,11,0.12);color:var(--attention);}
+
+  .navbar{background:#fff;border-top:1px solid var(--border);padding:8px 0 10px;display:flex;justify-content:space-evenly;}
+  .nav-item{background:none;border:none;display:flex;flex-direction:column;align-items:center;gap:4px;padding:4px 8px;color:var(--secondary-text);}
+  .nav-item svg{stroke:currentColor;}
+  .nav-item span.label{font-size:11px;font-weight:600;color:currentColor;}
+  .nav-item .nav-dot{width:4px;height:4px;border-radius:50%;background:transparent;}
+  .nav-item.active{color:var(--brand-red);}
+  .nav-item.active span.label{font-weight:700;}
+  .nav-item.active .nav-dot{background:var(--brand-red);}
+</style>
+</head>
+<body>
+<div class="phone">
+  <div class="appbar"><span class="title">Amir Filling Station</span></div>
+  <div class="content">
+    <div class="heading">Manual Vehicle Log</div>
+
+    <div class="field select-wrap">
+      <label>Vehicle</label>
+      <select><option value="" selected disabled>Select vehicle</option><option>Self</option><option>Carriage</option></select>
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+    </div>
+    <div class="field select-wrap">
+      <label>Fuel Type</label>
+      <select><option value="" selected disabled>Select fuel type</option><option>Petrol</option><option>Diesel</option><option>Hi-Octane</option></select>
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+    </div>
+    <div class="field select-wrap">
+      <label>Pump / Nozzle</label>
+      <select><option value="" selected disabled>Select nozzle</option><option>Nozzle 1</option><option>Nozzle 2</option><option>Nozzle 3</option><option>Nozzle 4</option><option>Nozzle 5</option><option>Nozzle 6</option><option>Nozzle 7</option><option>Nozzle 8</option><option>Nozzle 9</option><option>Nozzle 10</option></select>
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+    </div>
+    <div class="field"><label>Litres Dispensed (L)</label><input type="number"></div>
+    <div class="field"><label>Total Amount</label><input type="number"></div>
+    <div class="field select-wrap">
+      <label>Transaction Status</label>
+      <select><option value="" selected disabled>Select status</option><option>Completed</option><option>Pending</option></select>
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+    </div>
+
+    <div class="btn-row">
+      <button class="save-btn" onclick="alert('Save Log')">Save Log</button>
+      <button class="clear-btn" onclick="alert('Clear')">Clear</button>
+    </div>
+
+    <div class="section-title">Recent Entries</div>
+    <div class="table">
+      <div class="table-head"><span>Vehicle</span><span>Fuel</span><span>Litres</span><span style="text-align:right">Status</span></div>
+      <div class="table-row">
+        <span class="cell vehicle">Self</span><span class="cell">Petrol</span><span class="cell">13,000L</span>
+        <div class="status-wrap"><span class="pill completed">Completed</span></div>
+      </div>
+      <div class="table-row">
+        <span class="cell vehicle">Carriage</span><span class="cell">Diesel</span><span class="cell">5,000L</span>
+        <div class="status-wrap"><span class="pill completed">Completed</span></div>
+      </div>
+      <div class="table-row">
+        <span class="cell vehicle">Self</span><span class="cell">Hi-Octane</span><span class="cell">-</span>
+        <div class="status-wrap"><span class="pill pending">Pending</span></div>
+      </div>
+      <div class="table-row">
+        <span class="cell vehicle">Carriage</span><span class="cell">Diesel</span><span class="cell">5,000L</span>
+        <div class="status-wrap"><span class="pill completed">Completed</span></div>
+      </div>
+      <div class="table-row">
+        <span class="cell vehicle">Carriage</span><span class="cell">Diesel</span><span class="cell">5,000L</span>
+        <div class="status-wrap"><span class="pill completed">Completed</span></div>
+      </div>
+    </div>
+  </div>
+
+  <nav class="navbar">
+    <button class="nav-item">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-8 9 8"/><path d="M5 10v10a1 1 0 001 1h4v-6h4v6h4a1 1 0 001-1V10"/></svg>
+      <span class="label">Dashboard</span><span class="nav-dot"></span>
+    </button>
+    <button class="nav-item">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 22V4a2 2 0 012-2h6a2 2 0 012 2v18"/><path d="M4 10h10"/><path d="M14 8l3 2v8a2 2 0 002 2 2 2 0 002-2v-6l-3-3"/></svg>
+      <span class="label">Nozzles</span><span class="nav-dot"></span>
+    </button>
+    <button class="nav-item">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2.69s-5 5.02-5 9.31a5 5 0 0010 0c0-4.29-5-9.31-5-9.31z"/></svg>
+      <span class="label">Tanks</span><span class="nav-dot"></span>
+    </button>
+    <button class="nav-item">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7l9-4 9 4-9 4-9-4z"/><path d="M3 12l9 4 9-4"/><path d="M3 17l9 4 9-4"/></svg>
+      <span class="label">Stock</span><span class="nav-dot"></span>
+    </button>
+    <button class="nav-item active">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h9l5 5v13a1 1 0 01-1 1H6a1 1 0 01-1-1V4a1 1 0 011-1z"/><path d="M9 12h6M9 16h6M9 8h2"/></svg>
+      <span class="label">Logs</span><span class="nav-dot"></span>
+    </button>
+  </nav>
+</div>
+</body>
+</html>

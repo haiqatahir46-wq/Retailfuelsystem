@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>PARCO Staff Form Preview</title>
+<style>
+  :root{
+    --brand-red:#D71920;--red-light:#FFF1F2;--primary-text:#172B4D;--secondary-text:#5E6C84;
+    --bg:#F6F8FB;--card-bg:#FFFFFF;--border:#E2E8F0;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;background:#EDEFF3;font-family:"Segoe UI",system-ui,-apple-system,sans-serif;padding:24px;}
+  .phone{width:430px;height:932px;background:var(--bg);border-radius:46px;box-shadow:0 24px 60px rgba(23,43,77,0.25);border:10px solid #111;display:flex;flex-direction:column;overflow:hidden;}
+  .appbar{padding:14px 16px;display:flex;align-items:center;gap:10px;background:var(--card-bg);border-bottom:1px solid var(--border);}
+  .appbar .back{cursor:pointer;display:flex;}
+  .appbar .title{font-size:17px;font-weight:700;color:var(--primary-text);}
+  .content{flex:1;overflow-y:auto;padding:16px 20px 24px;}
+  .heading{font-size:16px;font-weight:700;color:var(--primary-text);margin-bottom:18px;}
+  .field{margin-bottom:14px;}
+  .field label{display:block;font-size:12px;font-weight:600;color:var(--secondary-text);margin-bottom:6px;}
+  .field input{
+    width:100%;height:48px;border-radius:12px;border:1px solid var(--border);
+    background:var(--bg);padding:0 16px;font-size:14px;color:var(--primary-text);
+    font-family:inherit;
+  }
+  .field input:focus{outline:none;border-color:var(--brand-red);border-width:1.4px;}
+  .upload-label{font-size:13px;font-weight:700;color:var(--primary-text);margin:6px 0 10px;}
+  .upload-row{display:flex;gap:12px;}
+  .upload-box{
+    flex:1;aspect-ratio:1.4;border-radius:12px;border:1.5px dashed var(--border);
+    background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;
+    cursor:pointer;
+  }
+  .upload-box .plus{
+    width:32px;height:32px;border-radius:8px;background:var(--red-light);
+    display:flex;align-items:center;justify-content:center;
+  }
+  .upload-box .plus svg{stroke:var(--brand-red);}
+  .upload-box span{font-size:11.5px;font-weight:600;color:var(--secondary-text);}
+  .save-btn{margin-top:22px;height:50px;width:100%;border-radius:14px;background:var(--brand-red);color:#fff;border:none;font-size:14px;font-weight:700;cursor:pointer;}
+</style>
+</head>
+<body>
+<div class="phone">
+  <div class="appbar">
+    <span class="back"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#172B4D" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/></svg></span>
+    <span class="title">Amir Filling Station</span>
+  </div>
+  <div class="content">
+    <!-- Blank form - matches the Figma "Sales Manager" reference exactly.
+         roleLabel here defaults to "Add Staff"; pass the staff member's
+         actual role when editing an existing one instead. -->
+    <div class="heading">Add Staff</div>
+    <div class="field"><label>Full Name</label><input type="text"></div>
+    <div class="field"><label>Father Name</label><input type="text"></div>
+    <div class="field"><label>CNIC</label><input type="text" inputmode="numeric"></div>
+    <div class="field"><label>Email Address</label><input type="email"></div>
+    <div class="field"><label>Contact Number</label><input type="tel"></div>
+    <div class="field"><label>Station Location</label><input type="text"></div>
+
+    <div class="upload-label">Upload Cnic</div>
+    <div class="upload-row">
+      <div class="upload-box" onclick="alert('Upload front side')">
+        <div class="plus"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg></div>
+        <span>Front Side</span>
+      </div>
+      <div class="upload-box" onclick="alert('Upload back side')">
+        <div class="plus"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg></div>
+        <span>Back Side</span>
+      </div>
+    </div>
+
+    <button class="save-btn" onclick="alert('Save')">Save</button>
+  </div>
+</div>
+</body>
+</html>

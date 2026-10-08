@@ -1,0 +1,650 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>PARCO Dashboard Screen Preview</title>
+<style>
+  :root{
+    --brand-red:#D71920;
+    --red-light:#FFF1F2;
+    --primary-text:#172B4D;
+    --secondary-text:#5E6C84;
+    --bg:#F6F8FB;
+    --card-bg:#FFFFFF;
+    --border:#E2E8F0;
+    --dispensing:#22A06B;
+    --idle:#8A94A6;
+    --attention:#E08E0B;
+    --fault:#D64545;
+    --diesel:#172B4D;
+    --octane:#22A06B;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0;
+    min-height:100vh;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    background:#EDEFF3;
+    font-family:"Segoe UI",system-ui,-apple-system,sans-serif;
+    padding:24px;
+  }
+  .phone{
+    width:430px;
+    height:932px;
+    background:var(--bg);
+    border-radius:46px;
+    box-shadow:0 24px 60px rgba(23,43,77,0.25);
+    border:10px solid #111;
+    display:flex;
+    flex-direction:column;
+    overflow:hidden;
+  }
+
+  /* Photo/wave banner - Dashboard IS Today's Sale, so it carries the same
+     wave-clipped station photo as splash/login/signup/Today's Sale. Hidden
+     for Weekly/Monthly/Yearly - a photo above a long scrollable list would
+     just get scrolled away (same reasoning as the standalone Today Sale
+     screen). */
+  .scene{
+    position:relative;width:100%;height:150px;flex-shrink:0;
+    background:#fff;clip-path:url(#waveClipDash);
+  }
+  .scene.hidden{display:none;}
+  .scene img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center 62%;}
+
+  /* Fixed top bar - stays above the photo at all times (not part of the
+     scrollable content), so hamburger/Help Center/Profile/notifications
+     are always reachable without scrolling. */
+  .topbar{
+    flex-shrink:0;
+    padding:14px 20px 14px;
+    display:flex;align-items:center;justify-content:space-between;
+    background:var(--card-bg);
+    border-bottom:1px solid var(--border);
+  }
+  .brand{display:flex;align-items:center;gap:8px;}
+  .hamburger{
+    width:32px;height:32px;display:flex;align-items:center;justify-content:center;
+    margin-right:2px;cursor:pointer;flex-shrink:0;
+  }
+  .brand-badge{
+    width:28px;height:28px;border-radius:6px;background:var(--brand-red);
+    display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:13px;
+  }
+  .brand-name{font-weight:700;font-size:16px;color:var(--primary-text);}
+  .topbar-icons{display:flex;align-items:center;gap:12px;}
+  .icon-btn{width:30px;height:30px;display:flex;align-items:center;justify-content:center;cursor:pointer;border-radius:8px;}
+  .icon-btn:hover{background:var(--bg);}
+  /* Profile - a real, working icon (not decorative), same as Help Center */
+  .profile-avatar{
+    width:28px;height:28px;border-radius:50%;background:var(--red-light);
+    display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;
+  }
+  .profile-avatar svg{stroke:var(--brand-red);}
+  .bell-wrap{position:relative;}
+  .bell-dot{position:absolute;top:-2px;right:-2px;width:8px;height:8px;border-radius:50%;background:var(--brand-red);border:1.5px solid #fff;}
+
+  /* Location row - sits right under the photo, above the period dropdown */
+  .location{padding:10px 20px 10px;display:flex;align-items:center;gap:6px;color:var(--primary-text);font-weight:600;font-size:14px;background:var(--card-bg);cursor:pointer;}
+
+  .content{flex:1;min-height:0;overflow-y:auto;display:flex;flex-direction:column;}
+  .content-inner{padding:4px 20px 20px;display:flex;flex-direction:column;gap:14px;}
+  .row-between{display:flex;align-items:center;justify-content:space-between;position:relative;}
+  .section-title{font-weight:700;font-size:18px;color:var(--primary-text);}
+
+  /* Real functioning dropdown - Today / Weekly / Monthly / Yearly -
+     matches the PeriodDropdown widget in sales_report_screens.dart /
+     dashboard_screen.dart exactly, including reusing it in the real code. */
+  .period-dropdown{
+    display:flex;align-items:center;gap:2px;
+    font-size:13px;font-weight:700;color:var(--primary-text);
+    background:var(--bg);border:1px solid var(--border);border-radius:10px;
+    padding:8px 12px;cursor:pointer;
+  }
+  .dropdown-menu{
+    position:absolute;top:40px;right:0;z-index:5;
+    background:#fff;border:1px solid var(--border);border-radius:12px;
+    box-shadow:0 10px 24px rgba(23,43,77,.18);
+    min-width:140px;overflow:hidden;
+    display:none;
+  }
+  .dropdown-menu.open{display:block;}
+  .dropdown-menu button{
+    display:block;width:100%;text-align:left;border:none;background:none;
+    padding:10px 14px;font-size:13.5px;font-weight:500;color:var(--primary-text);cursor:pointer;
+  }
+  .dropdown-menu button:hover{background:var(--bg);}
+  .dropdown-menu button.selected{color:var(--brand-red);font-weight:700;}
+
+  /* ---- Today: stat row / alert / trend / fuel breakdown ---- */
+  .stat-row{display:flex;gap:10px;}
+  .stat-card{
+    flex:1;background:var(--card-bg);border-radius:14px;padding:12px;
+    box-shadow:0 1px 2px rgba(23,43,77,0.06);
+  }
+  .stat-card .icon{
+    width:30px;height:30px;border-radius:8px;background:var(--red-light);
+    display:flex;align-items:center;justify-content:center;margin-bottom:8px;
+  }
+  .stat-card .icon svg{stroke:var(--brand-red);}
+  .stat-card .value{font-size:16px;font-weight:700;color:var(--primary-text);}
+  .stat-card .label{font-size:11px;color:var(--secondary-text);margin-top:2px;}
+
+  .alert-banner{
+    display:flex;align-items:center;gap:10px;
+    background:#FFF8EC;border:1px solid #FBE3B8;border-radius:12px;
+    padding:12px 14px;
+  }
+  .alert-banner svg{stroke:var(--attention); flex-shrink:0;}
+  .alert-banner .text{font-size:12.5px;color:#7A5A17;font-weight:600;line-height:1.4;}
+  .alert-banner .text b{color:#5C4210;}
+  .alert-banner .action{
+    margin-left:auto;font-size:12px;font-weight:700;color:var(--brand-red);flex-shrink:0;
+  }
+
+  .chart-card{background:var(--card-bg);border-radius:14px;padding:14px 16px 8px;box-shadow:0 1px 2px rgba(23,43,77,0.06);}
+  .chart-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;}
+  .chart-head .title{font-size:13px;font-weight:700;color:var(--primary-text);}
+  .chart-head .value{font-size:12px;font-weight:700;color:var(--dispensing);}
+  .chart-svg{width:100%;height:120px;display:block;}
+  .chart-days{display:flex;justify-content:space-between;font-size:10px;color:var(--secondary-text);padding:2px 4px 0;}
+
+  .fuel-row{display:flex;gap:10px;}
+  .fuel-mini{
+    flex:1;background:var(--card-bg);border-radius:14px;padding:12px;
+    box-shadow:0 1px 2px rgba(23,43,77,0.06);
+  }
+  .fuel-mini .name{font-size:12px;font-weight:700;color:var(--primary-text);margin-bottom:6px;display:flex;align-items:center;gap:6px;}
+  .fuel-mini .dot{width:8px;height:8px;border-radius:50%;}
+  .fuel-mini .litres{font-size:15px;font-weight:700;color:var(--primary-text);}
+  .fuel-mini .revenue{font-size:11px;color:var(--secondary-text);margin-top:2px;}
+
+  .section-heading{font-weight:700;font-size:15px;color:var(--primary-text);}
+
+  /* ---- Weekly / Monthly / Yearly: total revenue + period cards + chart,
+     reused as-is from the Sales Reports screens ---- */
+  .total-card{
+    background:var(--brand-red);border-radius:14px;padding:14px 16px;
+    display:flex;align-items:center;justify-content:space-between;
+    box-shadow:0 6px 16px rgba(215,25,32,.25);
+  }
+  .total-card .label{font-size:12.5px;font-weight:600;color:#fff;}
+  .total-card .value{font-size:17px;font-weight:800;color:#fff;}
+
+  .period-card{
+    background:var(--card-bg);border-radius:14px;padding:12px 14px;
+    box-shadow:0 1px 2px rgba(23,43,77,0.06);
+  }
+  .period-title{font-size:13px;font-weight:700;color:var(--primary-text);margin-bottom:8px;}
+  .pfuel-row{display:flex;gap:10px;}
+  .pfuel-col{flex:1;}
+  .pfuel-col .fname{display:flex;align-items:center;gap:5px;font-size:10.5px;font-weight:700;color:var(--secondary-text);margin-bottom:2px;}
+  .pfuel-col .fdot{width:6px;height:6px;border-radius:50%;}
+  .pfuel-col .fval{font-size:13px;font-weight:700;color:var(--primary-text);}
+  .revenue-row{
+    display:flex;gap:10px;margin-top:8px;padding-top:8px;border-top:1px solid var(--border);
+  }
+  .revenue-row .rcol{flex:1;font-size:10.5px;color:var(--secondary-text);}
+  .revenue-row .rcol b{display:block;font-size:12px;color:var(--brand-red);font-weight:700;margin-top:1px;}
+
+  .legend{display:flex;gap:14px;margin-top:8px;}
+  .legend span{display:flex;align-items:center;gap:5px;font-size:10.5px;color:var(--secondary-text);font-weight:600;}
+  .legend .ldot{width:7px;height:7px;border-radius:50%;}
+
+  .navbar{background:#fff;border-top:1px solid var(--border);padding:8px 0 10px;display:flex;justify-content:space-evenly;}
+  .nav-item{background:none;border:none;display:flex;flex-direction:column;align-items:center;gap:4px;padding:4px 8px;color:var(--secondary-text);cursor:pointer;}
+  .nav-item svg{stroke:currentColor;}
+  .nav-item span.label{font-size:11px;font-weight:600;color:currentColor;}
+  .nav-item .nav-dot{width:4px;height:4px;border-radius:50%;background:transparent;}
+  .nav-item.active{color:var(--brand-red);}
+  .nav-item.active span.label{font-weight:700;}
+  .nav-item.active .nav-dot{background:var(--brand-red);}
+
+  .period-list{display:flex;flex-direction:column;gap:10px;}
+  .hidden{display:none;}
+
+  /* ---- drawer ---- */
+  .drawer-overlay{
+    position:absolute;inset:0;background:rgba(23,43,77,0.35);z-index:10;
+    display:none;
+  }
+  .drawer-overlay.open{display:block;}
+  .drawer{
+    position:absolute;top:0;bottom:0;left:0;width:78%;max-width:320px;
+    background:#fff;z-index:11;transform:translateX(-100%);
+    transition:transform .25s ease;display:flex;flex-direction:column;
+    box-shadow:4px 0 16px rgba(0,0,0,.15);
+  }
+  .drawer.open{transform:translateX(0);}
+  .drawer-head{padding:28px 20px 18px;display:flex;align-items:center;gap:12px;border-bottom:1px solid var(--border);}
+  .drawer-avatar{width:48px;height:48px;border-radius:50%;background:var(--red-light);display:flex;align-items:center;justify-content:center;color:var(--brand-red);font-weight:700;font-size:18px;flex-shrink:0;}
+  .drawer-name{font-weight:700;font-size:15px;color:var(--primary-text);}
+  .drawer-email{font-size:12px;color:var(--secondary-text);margin-top:2px;}
+  .drawer-items{flex:1;padding:10px 8px;display:flex;flex-direction:column;}
+  .drawer-item{
+    display:flex;align-items:center;gap:14px;padding:12px 12px;border-radius:10px;
+    font-size:14px;font-weight:600;color:var(--primary-text);cursor:pointer;
+  }
+  .drawer-item:hover{background:var(--bg);}
+  .drawer-item svg{stroke:var(--secondary-text);flex-shrink:0;}
+  .drawer-item.logout{color:var(--brand-red);margin-top:auto;}
+  .drawer-item.logout svg{stroke:var(--brand-red);}
+  .drawer-close{position:absolute;top:20px;right:16px;cursor:pointer;}
+</style>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute">
+  <defs>
+    <!-- Same wave family as splash/login/signup/Today's Sale, scaled to
+         this 390x150 banner. -->
+    <clipPath id="waveClipDash" clipPathUnits="userSpaceOnUse">
+      <path d="M0,115 C110,136 160,136 195,124 C230,113 280,92 390,104 L390,0 L0,0 Z"/>
+    </clipPath>
+  </defs>
+</svg>
+
+<div class="phone" id="phone">
+
+  <!-- Fixed top bar - hamburger, PARCO brand, then Help Center / bell /
+       Profile on the right. Always above the photo, never scrolls away.
+       Help Center and Profile are real, working icons here. -->
+  <div class="topbar">
+    <div class="brand">
+      <div class="hamburger" onclick="document.getElementById('drawer').classList.add('open');document.getElementById('drawerOverlay').classList.add('open');">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#172B4D" stroke-width="2" stroke-linecap="round"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
+      </div>
+      <div class="brand-badge">P</div>
+      <span class="brand-name">PARCO</span>
+    </div>
+    <div class="topbar-icons">
+      <div class="icon-btn" title="Help Center" onclick="alert('Opens Help Center screen')">
+        <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="#5E6C84" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg>
+      </div>
+      <div class="bell-wrap">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#5E6C84" stroke-width="2"><path d="M18 8a6 6 0 10-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>
+        <div class="bell-dot"></div>
+      </div>
+      <div class="profile-avatar" title="Profile" onclick="alert('Opens Profile screen')">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-7 8-7s8 3 8 7"/></svg>
+      </div>
+    </div>
+  </div>
+
+  <div class="content">
+
+    <div class="scene" id="scene">
+      <img src="station.webp" alt="TOTAL PARCO filling station">
+    </div>
+
+    <div class="location" onclick="alert('Opens Google Places location search')">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#D71920" stroke-width="2"><path d="M12 22s7-7.5 7-12a7 7 0 10-14 0c0 4.5 7 12 7 12z"/><circle cx="12" cy="10" r="2.5"/></svg>
+      Amir Filling, Pattoki
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#5E6C84" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+    </div>
+
+    <!-- The Today/Weekly/Monthly/Yearly dropdown sits right here, directly
+         under the photo + location row. -->
+    <div class="content-inner">
+    <div class="row-between">
+      <span class="section-title">Overview</span>
+      <div class="period-dropdown" id="periodDropdown" onclick="document.getElementById('dropdownMenu').classList.toggle('open')">
+        <span id="dropdownLabel">Today</span>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#5E6C84" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+      </div>
+      <div class="dropdown-menu" id="dropdownMenu">
+        <button class="selected" data-view="today">Today</button>
+        <button data-view="weekly">Weekly</button>
+        <button data-view="monthly">Monthly</button>
+        <button data-view="yearly">Yearly</button>
+      </div>
+    </div>
+
+    <!-- ===== TODAY - the original Overview content ===== -->
+    <div id="view-today">
+      <div class="stat-row">
+        <div class="stat-card">
+          <div class="icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M12 1v22M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg></div>
+          <div class="value">PKR 2.4M</div>
+          <div class="label">Revenue Today</div>
+        </div>
+        <div class="stat-card">
+          <div class="icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M4 22V4a2 2 0 012-2h6a2 2 0 012 2v18"/><path d="M4 10h10"/></svg></div>
+          <div class="value">46,200 L</div>
+          <div class="label">Litres Dispensed</div>
+        </div>
+        <div class="stat-card">
+          <div class="icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg></div>
+          <div class="value">8 / 12</div>
+          <div class="label">Active Pumps</div>
+        </div>
+      </div>
+
+      <div class="alert-banner" style="margin-top:14px;">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M10.3 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L14.7 3.86a2 2 0 00-3.4 0z"/><path d="M12 9v4M12 17h.01"/></svg>
+        <div class="text"><b>Diesel tank</b> is below reorder threshold (5,000 L left)</div>
+        <div class="action">Reorder</div>
+      </div>
+
+      <div class="chart-card" style="margin-top:14px;">
+        <div class="chart-head">
+          <span class="title">Sales Trend (7 Days)</span>
+          <span class="value">&#9650; 12.4%</span>
+        </div>
+        <svg class="chart-svg" viewBox="0 0 380 120" preserveAspectRatio="none">
+          <line x1="0" y1="20" x2="380" y2="20" stroke="#E2E8F0" stroke-width="1"/>
+          <line x1="0" y1="60" x2="380" y2="60" stroke="#E2E8F0" stroke-width="1"/>
+          <line x1="0" y1="100" x2="380" y2="100" stroke="#E2E8F0" stroke-width="1"/>
+          <path d="M0,95 L63,75 L127,85 L190,55 L253,60 L317,30 L380,20" fill="none" stroke="#D71920" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M0,95 L63,75 L127,85 L190,55 L253,60 L317,30 L380,20 L380,120 L0,120 Z" fill="url(#chartFade)"/>
+          <defs>
+            <linearGradient id="chartFade" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="#D71920" stop-opacity="0.18"/>
+              <stop offset="100%" stop-color="#D71920" stop-opacity="0"/>
+            </linearGradient>
+          </defs>
+          <circle cx="380" cy="20" r="4" fill="#D71920"/>
+        </svg>
+        <div class="chart-days">
+          <span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span><span>Sun</span>
+        </div>
+      </div>
+
+      <div class="section-heading" style="margin-top:20px;margin-bottom:12px;">Fuel Breakdown</div>
+      <div class="fuel-row">
+        <div class="fuel-mini">
+          <div class="name"><span class="dot" style="background:#D71920;"></span>Petrol</div>
+          <div class="litres">18,000 L</div>
+          <div class="revenue">PKR 908,000</div>
+        </div>
+        <div class="fuel-mini">
+          <div class="name"><span class="dot" style="background:#172B4D;"></span>Diesel</div>
+          <div class="litres">21,400 L</div>
+          <div class="revenue">PKR 1,090,000</div>
+        </div>
+        <div class="fuel-mini">
+          <div class="name"><span class="dot" style="background:#22A06B;"></span>Hi-Octane</div>
+          <div class="litres">6,800 L</div>
+          <div class="revenue">PKR 402,000</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== WEEKLY - same period-card layout as the Weekly Sale screen ===== -->
+    <div id="view-weekly" class="hidden period-list">
+      <div class="total-card">
+        <span class="label">Total Revenue &middot; This Week</span>
+        <span class="value">PKR 11,200,600</span>
+      </div>
+      <div class="period-card"><div class="period-title">Day 1</div><div class="pfuel-row">
+        <div class="pfuel-col"><div class="fname"><span class="fdot" style="background:#D71920"></span>Petrol</div><div class="fval">18,000 L</div></div>
+        <div class="pfuel-col"><div class="fname"><span class="fdot" style="background:var(--diesel)"></span>Diesel</div><div class="fval">9,000 L</div></div>
+        <div class="pfuel-col"><div class="fname"><span class="fdot" style="background:var(--octane)"></span>Hi-Octane</div><div class="fval">3,000 L</div></div>
+      </div><div class="revenue-row"><div class="rcol">Petrol Rev<b>PKR 900,000</b></div><div class="rcol">Diesel Rev<b>PKR 432,000</b></div><div class="rcol">Hi-Octane Rev<b>PKR 180,000</b></div></div></div>
+      <div class="period-card"><div class="period-title">Day 2</div><div class="pfuel-row">
+        <div class="pfuel-col"><div class="fname"><span class="fdot" style="background:#D71920"></span>Petrol</div><div class="fval">18,000 L</div></div>
+        <div class="pfuel-col"><div class="fname"><span class="fdot" style="background:var(--diesel)"></span>Diesel</div><div class="fval">9,000 L</div></div>
+        <div class="pfuel-col"><div class="fname"><span class="fdot" style="background:var(--octane)"></span>Hi-Octane</div><div class="fval">3,000 L</div></div>
+      </div><div class="revenue-row"><div class="rcol">Petrol Rev<b>PKR 900,000</b></div><div class="rcol">Diesel Rev<b>PKR 432,000</b></div><div class="rcol">Hi-Octane Rev<b>PKR 180,000</b></div></div></div>
+      <div class="period-card"><div class="period-title">Day 3</div><div class="pfuel-row">
+        <div class="pfuel-col"><div class="fname"><span class="fdot" style="background:#D71920"></span>Petrol</div><div class="fval">17,200 L</div></div>
+        <div class="pfuel-col"><div class="fname"><span class="fdot" style="background:var(--diesel)"></span>Diesel</div><div class="fval">8,600 L</div></div>
+        <div class="pfuel-col"><div class="fname"><span class="fdot" style="background:var(--octane)"></span>Hi-Octane</div><div class="fval">2,800 L</div></div>
+      </div><div class="revenue-row"><div class="rcol">Petrol Rev<b>PKR 860,000</b></div><div class="rcol">Diesel Rev<b>PKR 412,800</b></div><div class="rcol">Hi-Octane Rev<b>PKR 168,000</b></div></div></div>
+      <div class="period-card"><div class="period-title">Day 4</div><div class="pfuel-row">
+        <div class="pfuel-col"><div class="fname"><span class="fdot" style="background:#D71920"></span>Petrol</div><div class="fval">19,500 L</div></div>
+        <div class="pfuel-col"><div class="fname"><span class="fdot" style="background:var(--diesel)"></span>Diesel</div><div class="fval">9,400 L</div></div>
+        <div class="pfuel-col"><div class="fname"><span class="fdot" style="background:var(--octane)"></span>Hi-Octane</div><div class="fval">3,100 L</div></div>
+      </div><div class="revenue-row"><div class="rcol">Petrol Rev<b>PKR 975,000</b></div><div class="rcol">Diesel Rev<b>PKR 451,200</b></div><div class="rcol">Hi-Octane Rev<b>PKR 186,000</b></div></div></div>
+      <div class="period-card"><div class="period-title">Day 5</div><div class="pfuel-row">
+        <div class="pfuel-col"><div class="fname"><span class="fdot" style="background:#D71920"></span>Petrol</div><div class="fval">19,000 L</div></div>
+        <div class="pfuel-col"><div class="fname"><span class="fdot" style="background:var(--diesel)"></span>Diesel</div><div class="fval">9,200 L</div></div>
+        <div class="pfuel-col"><div class="fname"><span class="fdot" style="background:var(--octane)"></span>Hi-Octane</div><div class="fval">3,050 L</div></div>
+      </div><div class="revenue-row"><div class="rcol">Petrol Rev<b>PKR 950,000</b></div><div class="rcol">Diesel Rev<b>PKR 441,600</b></div><div class="rcol">Hi-Octane Rev<b>PKR 183,000</b></div></div></div>
+      <div class="period-card"><div class="period-title">Day 6</div><div class="pfuel-row">
+        <div class="pfuel-col"><div class="fname"><span class="fdot" style="background:#D71920"></span>Petrol</div><div class="fval">21,000 L</div></div>
+        <div class="pfuel-col"><div class="fname"><span class="fdot" style="background:var(--diesel)"></span>Diesel</div><div class="fval">9,800 L</div></div>
+        <div class="pfuel-col"><div class="fname"><span class="fdot" style="background:var(--octane)"></span>Hi-Octane</div><div class="fval">3,300 L</div></div>
+      </div><div class="revenue-row"><div class="rcol">Petrol Rev<b>PKR 1,050,000</b></div><div class="rcol">Diesel Rev<b>PKR 470,400</b></div><div class="rcol">Hi-Octane Rev<b>PKR 198,000</b></div></div></div>
+      <div class="period-card"><div class="period-title">Day 7</div><div class="pfuel-row">
+        <div class="pfuel-col"><div class="fname"><span class="fdot" style="background:#D71920"></span>Petrol</div><div class="fval">22,500 L</div></div>
+        <div class="pfuel-col"><div class="fname"><span class="fdot" style="background:var(--diesel)"></span>Diesel</div><div class="fval">10,200 L</div></div>
+        <div class="pfuel-col"><div class="fname"><span class="fdot" style="background:var(--octane)"></span>Hi-Octane</div><div class="fval">3,600 L</div></div>
+      </div><div class="revenue-row"><div class="rcol">Petrol Rev<b>PKR 1,125,000</b></div><div class="rcol">Diesel Rev<b>PKR 489,600</b></div><div class="rcol">Hi-Octane Rev<b>PKR 216,000</b></div></div></div>
+
+      <div class="chart-card">
+        <div class="title" style="font-size:13px;font-weight:700;color:var(--primary-text);margin-bottom:10px;">Weekly Graph</div>
+        <svg viewBox="0 0 380 130" width="100%" height="130" preserveAspectRatio="none">
+          <g font-size="9" fill="#5E6C84">
+            <text x="10" y="128">Mon</text><text x="58" y="128">Tue</text><text x="106" y="128">Wed</text>
+            <text x="154" y="128">Thu</text><text x="202" y="128">Fri</text><text x="250" y="128">Sat</text><text x="298" y="128">Sun</text>
+          </g>
+          <g>
+            <rect x="8" y="60" width="8" height="55" fill="#D71920"/><rect x="17" y="70" width="8" height="45" fill="#172B4D"/><rect x="26" y="95" width="8" height="20" fill="#22A06B"/>
+            <rect x="56" y="50" width="8" height="65" fill="#D71920"/><rect x="65" y="65" width="8" height="50" fill="#172B4D"/><rect x="74" y="90" width="8" height="25" fill="#22A06B"/>
+            <rect x="104" y="65" width="8" height="50" fill="#D71920"/><rect x="113" y="75" width="8" height="40" fill="#172B4D"/><rect x="122" y="98" width="8" height="17" fill="#22A06B"/>
+            <rect x="152" y="40" width="8" height="75" fill="#D71920"/><rect x="161" y="60" width="8" height="55" fill="#172B4D"/><rect x="170" y="88" width="8" height="27" fill="#22A06B"/>
+            <rect x="200" y="45" width="8" height="70" fill="#D71920"/><rect x="209" y="62" width="8" height="53" fill="#172B4D"/><rect x="218" y="92" width="8" height="23" fill="#22A06B"/>
+            <rect x="248" y="30" width="8" height="85" fill="#D71920"/><rect x="257" y="55" width="8" height="60" fill="#172B4D"/><rect x="266" y="85" width="8" height="30" fill="#22A06B"/>
+            <rect x="296" y="20" width="8" height="95" fill="#D71920"/><rect x="305" y="48" width="8" height="67" fill="#172B4D"/><rect x="314" y="80" width="8" height="35" fill="#22A06B"/>
+          </g>
+        </svg>
+        <div class="legend">
+          <span><span class="ldot" style="background:#D71920"></span>Petrol</span>
+          <span><span class="ldot" style="background:var(--diesel)"></span>Diesel</span>
+          <span><span class="ldot" style="background:var(--octane)"></span>Hi-Octane</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== MONTHLY - same period-card layout as the Monthly Sale screen ===== -->
+    <div id="view-monthly" class="hidden period-list">
+      <div class="total-card">
+        <span class="label">Total Revenue &middot; This Month</span>
+        <span class="value">PKR 43,887,000</span>
+      </div>
+      <div class="period-card"><div class="period-title">Week 1</div><div class="pfuel-row">
+        <div class="pfuel-col"><div class="fname"><span class="fdot" style="background:#D71920"></span>Petrol</div><div class="fval">126,000 L</div></div>
+        <div class="pfuel-col"><div class="fname"><span class="fdot" style="background:var(--diesel)"></span>Diesel</div><div class="fval">63,000 L</div></div>
+        <div class="pfuel-col"><div class="fname"><span class="fdot" style="background:var(--octane)"></span>Hi-Octane</div><div class="fval">21,000 L</div></div>
+      </div><div class="revenue-row"><div class="rcol">Petrol Rev<b>PKR 6,300,000</b></div><div class="rcol">Diesel Rev<b>PKR 3,024,000</b></div><div class="rcol">Hi-Octane Rev<b>PKR 1,260,000</b></div></div></div>
+      <div class="period-card"><div class="period-title">Week 2</div><div class="pfuel-row">
+        <div class="pfuel-col"><div class="fname"><span class="fdot" style="background:#D71920"></span>Petrol</div><div class="fval">131,000 L</div></div>
+        <div class="pfuel-col"><div class="fname"><span class="fdot" style="background:var(--diesel)"></span>Diesel</div><div class="fval">65,000 L</div></div>
+        <div class="pfuel-col"><div class="fname"><span class="fdot" style="background:var(--octane)"></span>Hi-Octane</div><div class="fval">21,800 L</div></div>
+      </div><div class="revenue-row"><div class="rcol">Petrol Rev<b>PKR 6,550,000</b></div><div class="rcol">Diesel Rev<b>PKR 3,120,000</b></div><div class="rcol">Hi-Octane Rev<b>PKR 1,308,000</b></div></div></div>
+      <div class="period-card"><div class="period-title">Week 3</div><div class="pfuel-row">
+        <div class="pfuel-col"><div class="fname"><span class="fdot" style="background:#D71920"></span>Petrol</div><div class="fval">128,500 L</div></div>
+        <div class="pfuel-col"><div class="fname"><span class="fdot" style="background:var(--diesel)"></span>Diesel</div><div class="fval">64,200 L</div></div>
+        <div class="pfuel-col"><div class="fname"><span class="fdot" style="background:var(--octane)"></span>Hi-Octane</div><div class="fval">21,500 L</div></div>
+      </div><div class="revenue-row"><div class="rcol">Petrol Rev<b>PKR 6,425,000</b></div><div class="rcol">Diesel Rev<b>PKR 3,081,600</b></div><div class="rcol">Hi-Octane Rev<b>PKR 1,290,000</b></div></div></div>
+      <div class="period-card"><div class="period-title">Week 4</div><div class="pfuel-row">
+        <div class="pfuel-col"><div class="fname"><span class="fdot" style="background:#D71920"></span>Petrol</div><div class="fval">138,000 L</div></div>
+        <div class="pfuel-col"><div class="fname"><span class="fdot" style="background:var(--diesel)"></span>Diesel</div><div class="fval">67,800 L</div></div>
+        <div class="pfuel-col"><div class="fname"><span class="fdot" style="background:var(--octane)"></span>Hi-Octane</div><div class="fval">22,900 L</div></div>
+      </div><div class="revenue-row"><div class="rcol">Petrol Rev<b>PKR 6,900,000</b></div><div class="rcol">Diesel Rev<b>PKR 3,254,400</b></div><div class="rcol">Hi-Octane Rev<b>PKR 1,374,000</b></div></div></div>
+
+      <div class="chart-card">
+        <div class="title" style="font-size:13px;font-weight:700;color:var(--primary-text);margin-bottom:10px;">Monthly Graph</div>
+        <svg viewBox="0 0 380 130" width="100%" height="130" preserveAspectRatio="none">
+          <g font-size="10" fill="#5E6C84">
+            <text x="30" y="128">Week 1</text><text x="130" y="128">Week 2</text><text x="230" y="128">Week 3</text><text x="330" y="128">Week 4</text>
+          </g>
+          <g>
+            <rect x="20" y="35" width="18" height="80" fill="#D71920"/><rect x="40" y="55" width="18" height="60" fill="#172B4D"/><rect x="60" y="90" width="18" height="25" fill="#22A06B"/>
+            <rect x="120" y="45" width="18" height="70" fill="#D71920"/><rect x="140" y="60" width="18" height="55" fill="#172B4D"/><rect x="160" y="92" width="18" height="23" fill="#22A06B"/>
+            <rect x="220" y="30" width="18" height="85" fill="#D71920"/><rect x="240" y="50" width="18" height="65" fill="#172B4D"/><rect x="260" y="88" width="18" height="27" fill="#22A06B"/>
+            <rect x="320" y="20" width="18" height="95" fill="#D71920"/><rect x="340" y="45" width="18" height="70" fill="#172B4D"/><rect x="356" y="82" width="18" height="33" fill="#22A06B"/>
+          </g>
+        </svg>
+        <div class="legend">
+          <span><span class="ldot" style="background:#D71920"></span>Petrol</span>
+          <span><span class="ldot" style="background:var(--diesel)"></span>Diesel</span>
+          <span><span class="ldot" style="background:var(--octane)"></span>Hi-Octane</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== YEARLY - same period-card layout as the Yearly Sale screen ===== -->
+    <div id="view-yearly" class="hidden period-list">
+      <div class="total-card">
+        <span class="label">Total Revenue &middot; This Year</span>
+        <span class="value">PKR 578,239,000</span>
+      </div>
+      <div class="period-card"><div class="period-title">Month 1</div><div class="pfuel-row">
+        <div class="pfuel-col"><div class="fname"><span class="fdot" style="background:#D71920"></span>Petrol</div><div class="fval">523,500 L</div></div>
+        <div class="pfuel-col"><div class="fname"><span class="fdot" style="background:var(--diesel)"></span>Diesel</div><div class="fval">260,000 L</div></div>
+        <div class="pfuel-col"><div class="fname"><span class="fdot" style="background:var(--octane)"></span>Hi-Octane</div><div class="fval">87,200 L</div></div>
+      </div><div class="revenue-row"><div class="rcol">Petrol Rev<b>PKR 26,175,000</b></div><div class="rcol">Diesel Rev<b>PKR 12,480,000</b></div><div class="rcol">Hi-Octane Rev<b>PKR 5,232,000</b></div></div></div>
+      <div class="period-card"><div class="period-title">Month 2</div><div class="pfuel-row">
+        <div class="pfuel-col"><div class="fname"><span class="fdot" style="background:#D71920"></span>Petrol</div><div class="fval">498,000 L</div></div>
+        <div class="pfuel-col"><div class="fname"><span class="fdot" style="background:var(--diesel)"></span>Diesel</div><div class="fval">247,500 L</div></div>
+        <div class="pfuel-col"><div class="fname"><span class="fdot" style="background:var(--octane)"></span>Hi-Octane</div><div class="fval">83,400 L</div></div>
+      </div><div class="revenue-row"><div class="rcol">Petrol Rev<b>PKR 24,900,000</b></div><div class="rcol">Diesel Rev<b>PKR 11,880,000</b></div><div class="rcol">Hi-Octane Rev<b>PKR 5,004,000</b></div></div></div>
+      <div class="period-card"><div class="period-title">Month 3</div><div class="pfuel-row">
+        <div class="pfuel-col"><div class="fname"><span class="fdot" style="background:#D71920"></span>Petrol</div><div class="fval">541,000 L</div></div>
+        <div class="pfuel-col"><div class="fname"><span class="fdot" style="background:var(--diesel)"></span>Diesel</div><div class="fval">268,800 L</div></div>
+        <div class="pfuel-col"><div class="fname"><span class="fdot" style="background:var(--octane)"></span>Hi-Octane</div><div class="fval">90,600 L</div></div>
+      </div><div class="revenue-row"><div class="rcol">Petrol Rev<b>PKR 27,050,000</b></div><div class="rcol">Diesel Rev<b>PKR 12,902,400</b></div><div class="rcol">Hi-Octane Rev<b>PKR 5,436,000</b></div></div></div>
+      <div class="period-card"><div class="period-title">Month 4</div><div class="pfuel-row">
+        <div class="pfuel-col"><div class="fname"><span class="fdot" style="background:#D71920"></span>Petrol</div><div class="fval">556,200 L</div></div>
+        <div class="pfuel-col"><div class="fname"><span class="fdot" style="background:var(--diesel)"></span>Diesel</div><div class="fval">276,000 L</div></div>
+        <div class="pfuel-col"><div class="fname"><span class="fdot" style="background:var(--octane)"></span>Hi-Octane</div><div class="fval">93,100 L</div></div>
+      </div><div class="revenue-row"><div class="rcol">Petrol Rev<b>PKR 27,810,000</b></div><div class="rcol">Diesel Rev<b>PKR 13,248,000</b></div><div class="rcol">Hi-Octane Rev<b>PKR 5,586,000</b></div></div></div>
+      <div class="period-card"><div class="period-title">Month 5</div><div class="pfuel-row">
+        <div class="pfuel-col"><div class="fname"><span class="fdot" style="background:#D71920"></span>Petrol</div><div class="fval">562,000 L</div></div>
+        <div class="pfuel-col"><div class="fname"><span class="fdot" style="background:var(--diesel)"></span>Diesel</div><div class="fval">279,500 L</div></div>
+        <div class="pfuel-col"><div class="fname"><span class="fdot" style="background:var(--octane)"></span>Hi-Octane</div><div class="fval">94,200 L</div></div>
+      </div><div class="revenue-row"><div class="rcol">Petrol Rev<b>PKR 28,100,000</b></div><div class="rcol">Diesel Rev<b>PKR 13,416,000</b></div><div class="rcol">Hi-Octane Rev<b>PKR 5,652,000</b></div></div></div>
+      <div class="period-card"><div class="period-title">Month 6</div><div class="pfuel-row">
+        <div class="pfuel-col"><div class="fname"><span class="fdot" style="background:#D71920"></span>Petrol</div><div class="fval">578,000 L</div></div>
+        <div class="pfuel-col"><div class="fname"><span class="fdot" style="background:var(--diesel)"></span>Diesel</div><div class="fval">287,800 L</div></div>
+        <div class="pfuel-col"><div class="fname"><span class="fdot" style="background:var(--octane)"></span>Hi-Octane</div><div class="fval">97,000 L</div></div>
+      </div><div class="revenue-row"><div class="rcol">Petrol Rev<b>PKR 28,900,000</b></div><div class="rcol">Diesel Rev<b>PKR 13,814,400</b></div><div class="rcol">Hi-Octane Rev<b>PKR 5,820,000</b></div></div></div>
+      <div class="period-card"><div class="period-title">Month 7</div><div class="pfuel-row">
+        <div class="pfuel-col"><div class="fname"><span class="fdot" style="background:#D71920"></span>Petrol</div><div class="fval">591,500 L</div></div>
+        <div class="pfuel-col"><div class="fname"><span class="fdot" style="background:var(--diesel)"></span>Diesel</div><div class="fval">294,200 L</div></div>
+        <div class="pfuel-col"><div class="fname"><span class="fdot" style="background:var(--octane)"></span>Hi-Octane</div><div class="fval">99,200 L</div></div>
+      </div><div class="revenue-row"><div class="rcol">Petrol Rev<b>PKR 29,575,000</b></div><div class="rcol">Diesel Rev<b>PKR 14,121,600</b></div><div class="rcol">Hi-Octane Rev<b>PKR 5,952,000</b></div></div></div>
+      <div class="period-card"><div class="period-title">Month 8</div><div class="pfuel-row">
+        <div class="pfuel-col"><div class="fname"><span class="fdot" style="background:#D71920"></span>Petrol</div><div class="fval">585,000 L</div></div>
+        <div class="pfuel-col"><div class="fname"><span class="fdot" style="background:var(--diesel)"></span>Diesel</div><div class="fval">291,000 L</div></div>
+        <div class="pfuel-col"><div class="fname"><span class="fdot" style="background:var(--octane)"></span>Hi-Octane</div><div class="fval">98,100 L</div></div>
+      </div><div class="revenue-row"><div class="rcol">Petrol Rev<b>PKR 29,250,000</b></div><div class="rcol">Diesel Rev<b>PKR 13,968,000</b></div><div class="rcol">Hi-Octane Rev<b>PKR 5,886,000</b></div></div></div>
+      <div class="period-card"><div class="period-title">Month 9</div><div class="pfuel-row">
+        <div class="pfuel-col"><div class="fname"><span class="fdot" style="background:#D71920"></span>Petrol</div><div class="fval">602,000 L</div></div>
+        <div class="pfuel-col"><div class="fname"><span class="fdot" style="background:var(--diesel)"></span>Diesel</div><div class="fval">299,500 L</div></div>
+        <div class="pfuel-col"><div class="fname"><span class="fdot" style="background:var(--octane)"></span>Hi-Octane</div><div class="fval">101,000 L</div></div>
+      </div><div class="revenue-row"><div class="rcol">Petrol Rev<b>PKR 30,100,000</b></div><div class="rcol">Diesel Rev<b>PKR 14,376,000</b></div><div class="rcol">Hi-Octane Rev<b>PKR 6,060,000</b></div></div></div>
+      <div class="period-card"><div class="period-title">Month 10</div><div class="pfuel-row">
+        <div class="pfuel-col"><div class="fname"><span class="fdot" style="background:#D71920"></span>Petrol</div><div class="fval">615,500 L</div></div>
+        <div class="pfuel-col"><div class="fname"><span class="fdot" style="background:var(--diesel)"></span>Diesel</div><div class="fval">306,200 L</div></div>
+        <div class="pfuel-col"><div class="fname"><span class="fdot" style="background:var(--octane)"></span>Hi-Octane</div><div class="fval">103,400 L</div></div>
+      </div><div class="revenue-row"><div class="rcol">Petrol Rev<b>PKR 30,775,000</b></div><div class="rcol">Diesel Rev<b>PKR 14,697,600</b></div><div class="rcol">Hi-Octane Rev<b>PKR 6,204,000</b></div></div></div>
+      <div class="period-card"><div class="period-title">Month 11</div><div class="pfuel-row">
+        <div class="pfuel-col"><div class="fname"><span class="fdot" style="background:#D71920"></span>Petrol</div><div class="fval">609,000 L</div></div>
+        <div class="pfuel-col"><div class="fname"><span class="fdot" style="background:var(--diesel)"></span>Diesel</div><div class="fval">303,000 L</div></div>
+        <div class="pfuel-col"><div class="fname"><span class="fdot" style="background:var(--octane)"></span>Hi-Octane</div><div class="fval">102,300 L</div></div>
+      </div><div class="revenue-row"><div class="rcol">Petrol Rev<b>PKR 30,450,000</b></div><div class="rcol">Diesel Rev<b>PKR 14,544,000</b></div><div class="rcol">Hi-Octane Rev<b>PKR 6,138,000</b></div></div></div>
+      <div class="period-card"><div class="period-title">Month 12</div><div class="pfuel-row">
+        <div class="pfuel-col"><div class="fname"><span class="fdot" style="background:#D71920"></span>Petrol</div><div class="fval">628,000 L</div></div>
+        <div class="pfuel-col"><div class="fname"><span class="fdot" style="background:var(--diesel)"></span>Diesel</div><div class="fval">312,500 L</div></div>
+        <div class="pfuel-col"><div class="fname"><span class="fdot" style="background:var(--octane)"></span>Hi-Octane</div><div class="fval">105,600 L</div></div>
+      </div><div class="revenue-row"><div class="rcol">Petrol Rev<b>PKR 31,400,000</b></div><div class="rcol">Diesel Rev<b>PKR 15,000,000</b></div><div class="rcol">Hi-Octane Rev<b>PKR 6,336,000</b></div></div></div>
+
+      <div class="chart-card">
+        <div class="title" style="font-size:13px;font-weight:700;color:var(--primary-text);margin-bottom:10px;">Yearly Graph</div>
+        <svg viewBox="0 0 380 130" width="100%" height="130" preserveAspectRatio="none">
+          <g>
+            <polyline points="10,90 42,85 74,70 106,75 138,60 170,65 202,50 234,55 266,40 298,45 330,30 362,20" fill="none" stroke="#D71920" stroke-width="2.5"/>
+            <polyline points="10,100 42,98 74,92 106,94 138,85 170,88 202,78 234,80 266,70 298,72 330,62 362,58" fill="none" stroke="#172B4D" stroke-width="2.5"/>
+            <polyline points="10,112 42,110 74,108 106,109 138,105 170,106 202,100 234,101 266,96 298,97 330,92 362,90" fill="none" stroke="#22A06B" stroke-width="2.5"/>
+          </g>
+          <g font-size="8" fill="#5E6C84">
+            <text x="4" y="128">J</text><text x="36" y="128">F</text><text x="68" y="128">M</text><text x="100" y="128">A</text>
+            <text x="132" y="128">M</text><text x="164" y="128">J</text><text x="196" y="128">J</text><text x="228" y="128">A</text>
+            <text x="260" y="128">S</text><text x="292" y="128">O</text><text x="324" y="128">N</text><text x="356" y="128">D</text>
+          </g>
+        </svg>
+        <div class="legend">
+          <span><span class="ldot" style="background:#D71920"></span>Petrol</span>
+          <span><span class="ldot" style="background:var(--diesel)"></span>Diesel</span>
+          <span><span class="ldot" style="background:var(--octane)"></span>Hi-Octane</span>
+        </div>
+      </div>
+    </div>
+
+    </div>
+  </div>
+
+  <!-- Bottom Navbar -->
+  <nav class="navbar">
+    <button class="nav-item active">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-8 9 8"/><path d="M5 10v10a1 1 0 001 1h4v-6h4v6h4a1 1 0 001-1V10"/></svg>
+      <span class="label">Dashboard</span>
+      <span class="nav-dot"></span>
+    </button>
+    <button class="nav-item">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 22V4a2 2 0 012-2h6a2 2 0 012 2v18"/><path d="M4 10h10"/><path d="M14 8l3 2v8a2 2 0 002 2 2 2 0 002-2v-6l-3-3"/></svg>
+      <span class="label">Nozzles</span>
+      <span class="nav-dot"></span>
+    </button>
+    <button class="nav-item">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2.69s-5 5.02-5 9.31a5 5 0 0010 0c0-4.29-5-9.31-5-9.31z"/></svg>
+      <span class="label">Tanks</span>
+      <span class="nav-dot"></span>
+    </button>
+    <button class="nav-item">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7l9-4 9 4-9 4-9-4z"/><path d="M3 12l9 4 9-4"/><path d="M3 17l9 4 9-4"/></svg>
+      <span class="label">Stock</span>
+      <span class="nav-dot"></span>
+    </button>
+    <button class="nav-item">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h9l5 5v13a1 1 0 01-1 1H6a1 1 0 01-1-1V4a1 1 0 011-1z"/><path d="M9 12h6M9 16h6M9 8h2"/></svg>
+      <span class="label">Logs</span>
+      <span class="nav-dot"></span>
+    </button>
+  </nav>
+
+  <!-- Hamburger drawer: Profile / Help Center / Settings / Log Out -->
+  <div class="drawer-overlay" id="drawerOverlay" onclick="document.getElementById('drawer').classList.remove('open');this.classList.remove('open');"></div>
+  <div class="drawer" id="drawer">
+    <div class="drawer-close" onclick="document.getElementById('drawer').classList.remove('open');document.getElementById('drawerOverlay').classList.remove('open');">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#5E6C84" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
+    </div>
+    <div class="drawer-head">
+      <div class="drawer-avatar">H</div>
+      <div>
+        <div class="drawer-name">Haiqa Tahir</div>
+        <div class="drawer-email">haiqa@parco.example</div>
+      </div>
+    </div>
+    <div class="drawer-items">
+      <div class="drawer-item"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-7 8-7s8 3 8 7"/></svg>Profile</div>
+      <div class="drawer-item"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06A1.65 1.65 0 009 4.6a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09A1.65 1.65 0 0015 4.6a1.65 1.65 0 001.82-.33l.06-.06a2 2 0 112.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>Settings</div>
+      <div class="drawer-item"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg>Help Center</div>
+      <div class="drawer-item logout"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/></svg>Log Out</div>
+    </div>
+  </div>
+
+</div>
+<script>
+  const dropdownLabels = { today: 'Today', weekly: 'Weekly', monthly: 'Monthly', yearly: 'Yearly' };
+  document.querySelectorAll('.dropdown-menu button').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.dropdown-menu button').forEach(b => b.classList.remove('selected'));
+      btn.classList.add('selected');
+      const view = btn.dataset.view;
+      document.getElementById('dropdownLabel').textContent = dropdownLabels[view];
+      document.getElementById('dropdownMenu').classList.remove('open');
+      document.getElementById('scene').classList.toggle('hidden', view !== 'today');
+      ['today','weekly','monthly','yearly'].forEach(v => {
+        document.getElementById('view-' + v).classList.toggle('hidden', v !== view);
+      });
+    });
+  });
+</script>
+</body>
+</html>

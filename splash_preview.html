@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>PARCO Splash Screen Preview</title>
+<style>
+  :root{
+    --brand-red:#D71920;
+    --brand-red-dark:#B0141A;
+    --primary-text:#172B4D;
+    --secondary-text:#5E6C84;
+    --bg:#F6F8FB;
+    --card-bg:#FFFFFF;
+    --border:#E2E8F0;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0;
+    min-height:100vh;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    background:#EDEFF3;
+    font-family:"Segoe UI",system-ui,-apple-system,sans-serif;
+    padding:24px;
+  }
+  .phone{
+    position:relative;
+    width:430px;
+    height:932px;
+    border-radius:46px;
+    box-shadow:0 24px 60px rgba(23,43,77,0.25);
+    overflow:hidden;
+    border:10px solid #111;
+    /* White, not brand-red: the rounded corners clip tiny slivers of this
+       background where the rectangular .scene/.card don't quite reach the
+       curve, and both of those are white at their own edges - red here
+       showed as stray red flecks in the corners. */
+    background:#fff;
+  }
+
+  /* ---------- Station image panel (bottom edge wave-clipped) ---------- */
+  .scene{
+    position:absolute;
+    top:0;left:0;right:0;
+    height:574px;
+    background:#fff;
+    clip-path:url(#waveClip);
+  }
+  .scene img{
+    position:absolute;
+    inset:0;
+    width:100%;
+    height:100%;
+    object-fit:cover;
+    object-position:center 40%;
+  }
+
+  /* ---------- Welcome card ---------- */
+  .card{
+    position:absolute;
+    left:0;right:0;bottom:0;
+    height:358px;
+    background:var(--card-bg);
+    padding:30px 28px 26px;
+    display:flex;
+    flex-direction:column;
+    justify-content:space-between;
+    animation:cardIn .9s cubic-bezier(.16,.84,.44,1) both;
+  }
+  @keyframes cardIn{
+    from{ transform:translateY(40px); opacity:0; }
+    to{ transform:translateY(0); opacity:1; }
+  }
+  .card h1{
+    margin:0 0 8px;
+    font-size:24px;
+    font-weight:700;
+    color:var(--primary-text);
+  }
+  .card p{
+    margin:0;
+    font-size:14px;
+    line-height:1.5;
+    color:var(--secondary-text);
+  }
+  .card-footer{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+  }
+  .dots{display:flex;gap:6px;}
+  .dots span{
+    width:6px;height:6px;border-radius:3px;background:var(--border);
+  }
+  .dots span.active{width:18px;background:var(--brand-red);}
+  .get-started{
+    width:48px;height:48px;border-radius:50%;
+    background:var(--brand-red);
+    border:none;
+    display:flex;align-items:center;justify-content:center;
+    box-shadow:0 8px 18px rgba(215,25,32,.35);
+    cursor:pointer;
+  }
+  .get-started svg{stroke:#fff;}
+
+</style>
+</head>
+<body>
+
+<!-- Animated wave clip-path applied to the photo panel (.scene). Two `d`
+     states are morphed back and forth via SMIL <animate> for a continuous
+     flowing-water motion at the bottom edge of the picture. -->
+<svg width="0" height="0" style="position:absolute">
+  <defs>
+    <!-- One big, fixed wave, matching the reference: a deep dip low on the
+         left sweeping up to a high point on the right. Static - no motion. -->
+    <clipPath id="waveClip" clipPathUnits="userSpaceOnUse">
+      <path d="M0,442 C121,519 176,519 215,475 C254,431 309,353 430,397 L430,0 L0,0 Z"/>
+    </clipPath>
+  </defs>
+</svg>
+
+<div class="phone">
+
+  <div class="scene">
+    <img src="station.webp" alt="TOTAL PARCO filling station">
+  </div>
+
+  <div class="card">
+    <div>
+      <h1>Welcome to PARCO</h1>
+      <p>Monitor every pump, tank and sale across your station in real time.</p>
+    </div>
+    <div class="card-footer">
+      <div class="dots">
+        <span class="active"></span>
+        <span></span>
+        <span></span>
+      </div>
+      <button class="get-started" aria-label="Get started">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M13 6l6 6-6 6"/></svg>
+      </button>
+    </div>
+  </div>
+
+</div>
+</body>
+</html>
