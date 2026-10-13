@@ -9,6 +9,13 @@
 # packages, and plugins designed to encourage good coding practices.
 include: package:flutter_lints/flutter.yaml
 
+analyzer:
+  exclude:
+    # A separate, nested Flutter project (its own repo) accidentally sits
+    # inside this one - exclude it so `flutter analyze` only reports on
+    # this project's own code.
+    - Retailfuelsystem/**
+
 linter:
   # The lint rules applied to this project can be customized in the
   # section below to disable rules from the `package:flutter_lints/flutter.yaml`

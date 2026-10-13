@@ -1,104 +1,10 @@
 import 'package:flutter/material.dart';
+import '../data/demo_tanks.dart';
+import '../models/tank_stock.dart';
 import '../theme/app_colors.dart';
 import '../widgets/app_bottom_nav_bar.dart';
 import '../widgets/app_drawer.dart';
 import '../widgets/app_top_bar.dart';
-import 'sales_report_screens.dart' show SalesReportPeriod, salesFor;
-
-/// Healthy/Low/Critical is ALWAYS derived from currentVolume vs threshold
-/// on TankStock (see the `health` getter below) - never stored separately,
-/// same rule as revenue-from-litres elsewhere in this app, so the badge
-/// can never drift out of sync with the numbers next to it.
-enum TankHealth { healthy, low, critical }
-
-class TankStock {
-  final String fuelName;
-  final double currentVolume;
-  final double capacity;
-  final double threshold;
-
-  const TankStock({
-    required this.fuelName,
-    required this.currentVolume,
-    required this.capacity,
-    required this.threshold,
-  });
-
-  double get percentFull => (currentVolume / capacity).clamp(0, 1);
-
-  TankHealth get health {
-    if (currentVolume >= threshold) return TankHealth.healthy;
-    if (currentVolume >= threshold * 0.5) return TankHealth.low;
-    return TankHealth.critical;
-  }
-}
-
-enum DeliveryVehicle { self, carriage }
-
-class PurchaseOrder {
-  final String poNumber;
-  final String date;
-  final String fuelName;
-  final double litres;
-  final DeliveryVehicle vehicle;
-
-  const PurchaseOrder({
-    required this.poNumber,
-    required this.date,
-    required this.fuelName,
-    required this.litres,
-    required this.vehicle,
-  });
-}
-
-// Capacity and threshold match the Figma reference (25,000 L / 18,000 L
-// for every tank) - wire these to real per-tank readings later (see the
-// Logs screen discussion on fetching from the station's ATG system).
-const _tankCapacity = 25000.0;
-const _tankThreshold = 18000.0;
-
-/// Builds this station's tank list with Current Volume ACTUALLY computed
-/// from today's real sales - capacity minus whatever's been sold today for
-/// that fuel, sourced from the exact same per-station daily sales data
-/// Dashboard and Sales Reports already use (never a separate, hand-picked
-/// number that could show a tank level unrelated to real sales). This
-/// assumes the tank is topped up to capacity each day, consistent with the
-/// Create Reorder / Recent Purchased Orders workflow on this same screen -
-/// wire it to the real ATG reading (minus a running depletion feed) once
-/// that's available, instead of the capacity-minus-today's-sales estimate.
-List<TankStock> tanksForStation(String stationId) {
-  final todayData = salesFor(stationId, SalesReportPeriod.today);
-  final today = todayData.isNotEmpty ? todayData.first : null;
-
-  double remaining(double soldToday) => (_tankCapacity - soldToday).clamp(0, _tankCapacity);
-
-  return [
-    TankStock(
-      fuelName: 'Petrol',
-      currentVolume: remaining(today?.petrolL ?? 0),
-      capacity: _tankCapacity,
-      threshold: _tankThreshold,
-    ),
-    TankStock(
-      fuelName: 'Diesel',
-      currentVolume: remaining(today?.dieselL ?? 0),
-      capacity: _tankCapacity,
-      threshold: _tankThreshold,
-    ),
-    TankStock(
-      fuelName: 'Hi-Octane',
-      currentVolume: remaining(today?.octaneL ?? 0),
-      capacity: _tankCapacity,
-      threshold: _tankThreshold,
-    ),
-  ];
-}
-
-const demoPurchaseOrders = [
-  PurchaseOrder(poNumber: 'PO-2026-0058', date: '15 May 2026', fuelName: 'Diesel', litres: 20000, vehicle: DeliveryVehicle.carriage),
-  PurchaseOrder(poNumber: 'PO-2026-0058', date: '15 May 2026', fuelName: 'Petrol', litres: 20000, vehicle: DeliveryVehicle.self),
-  PurchaseOrder(poNumber: 'PO-2026-0058', date: '15 May 2026', fuelName: 'Hi-Octane', litres: 20000, vehicle: DeliveryVehicle.carriage),
-];
 
 /// Opened from the "Stock" tab in the bottom nav. Top of the screen is
 /// the StationRow, then a plain station-photo banner (NOT wave-clipped

@@ -1,31 +1,9 @@
 import 'package:flutter/material.dart';
+import '../data/demo_logs.dart';
+import '../models/log_entry.dart';
 import '../theme/app_colors.dart';
 import '../widgets/app_bottom_nav_bar.dart';
 import '../widgets/app_text_field.dart';
-
-enum LogStatus { completed, pending }
-
-class VehicleLogEntry {
-  final String vehicleType; // 'Self' or 'Carriage'
-  final String fuelType;
-  final String litres; // display value, e.g. '13,000L' - '-' if not dispensed yet
-  final LogStatus status;
-
-  const VehicleLogEntry({
-    required this.vehicleType,
-    required this.fuelType,
-    required this.litres,
-    required this.status,
-  });
-}
-
-const demoLogEntries = [
-  VehicleLogEntry(vehicleType: 'Self', fuelType: 'Petrol', litres: '13,000L', status: LogStatus.completed),
-  VehicleLogEntry(vehicleType: 'Carriage', fuelType: 'Diesel', litres: '5,000L', status: LogStatus.completed),
-  VehicleLogEntry(vehicleType: 'Self', fuelType: 'Hi-Octane', litres: '-', status: LogStatus.pending),
-  VehicleLogEntry(vehicleType: 'Carriage', fuelType: 'Diesel', litres: '5,000L', status: LogStatus.completed),
-  VehicleLogEntry(vehicleType: 'Carriage', fuelType: 'Diesel', litres: '5,000L', status: LogStatus.completed),
-];
 
 /// Opened from the "Logs" tab in the bottom nav. Same UX as the Figma
 /// reference (Manual Vehicle Log form: Vehicle/Fuel Type/Pump-Nozzle/

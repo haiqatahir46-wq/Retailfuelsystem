@@ -1,15 +1,8 @@
 import 'package:flutter/material.dart';
+import '../data/demo_staff.dart';
+import '../models/staff.dart';
 import '../screens/staff_form_screen.dart';
 import '../screens/staff_management_screen.dart';
-
-// Demo seed data - wire to a real staff backend later, the same way
-// demoTankStock/demoPurchaseOrders/demoLogEntries stand in for real data
-// elsewhere until one exists.
-const _demoStaffMembers = [
-  StaffMember(id: 's1', name: 'Bilal Ahmed', role: 'Manager', phone: '0300-1234567'),
-  StaffMember(id: 's2', name: 'Usman Tariq', role: 'Attendant', phone: '0301-2345678'),
-  StaffMember(id: 's3', name: 'Imran Shah', role: 'Cashier', phone: '0302-3456789', status: StaffStatus.onLeave),
-];
 
 /// Staff list, with its own "+ Add Staff" drill-down into the form.
 /// Stateful so it owns the staff list itself: a new hire added via the
@@ -25,7 +18,7 @@ class StaffFlow extends StatefulWidget {
 }
 
 class _StaffFlowState extends State<StaffFlow> {
-  List<StaffMember> _staff = _demoStaffMembers;
+  List<StaffMember> _staff = demoStaffMembers;
 
   @override
   Widget build(BuildContext context) {

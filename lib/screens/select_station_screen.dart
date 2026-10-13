@@ -1,12 +1,6 @@
 import 'package:flutter/material.dart';
+import '../models/station.dart';
 import '../theme/app_colors.dart';
-
-class StationListItem {
-  final String id;
-  final String name;
-
-  const StationListItem({required this.id, required this.name});
-}
 
 /// Station list/selector. Plain - no photo/wave header. Each row shows the
 /// station name and an edit (pencil) action, not a status pill - the

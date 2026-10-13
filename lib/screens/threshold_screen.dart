@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
+import '../models/tank_stock.dart';
 import '../theme/app_colors.dart';
 import '../widgets/app_text_field.dart';
-import 'stock_screen.dart' show TankStock;
 
 /// Opened from the "Set Threshold" button on any tank card in
 /// StockScreen - a SEPARATE screen from CreateReorderScreen, reached

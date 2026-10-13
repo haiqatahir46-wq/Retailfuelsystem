@@ -1,23 +1,6 @@
 import 'package:flutter/material.dart';
+import '../models/staff.dart';
 import '../theme/app_colors.dart';
-
-enum StaffStatus { active, onLeave }
-
-class StaffMember {
-  final String id;
-  final String name;
-  final String role; // e.g. 'Manager', 'Attendant', 'Cashier'
-  final String phone;
-  final StaffStatus status;
-
-  const StaffMember({
-    required this.id,
-    required this.name,
-    required this.role,
-    required this.phone,
-    this.status = StaffStatus.active,
-  });
-}
 
 /// Opened from the "Staff Management" row on ProfileScreen - the staff
 /// headcount that used to sit in Profile's quick-stats row now has its own
