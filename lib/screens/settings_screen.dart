@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../theme/app_colors.dart';
+import '../theme/app_decorations.dart';
 
 /// Opened from the drawer/Profile "Settings" entry. Kept small and
 /// honest about what the app can actually do right now - a notifications
@@ -79,19 +80,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ],
           ),
           const SizedBox(height: 28),
-          SizedBox(
-            height: 48,
-            width: double.infinity,
-            child: OutlinedButton.icon(
-              onPressed: widget.onLogout,
-              icon: const Icon(Icons.logout, size: 18),
-              label: const Text('Log Out'),
-              style: OutlinedButton.styleFrom(
-                foregroundColor: AppColors.statusFault,
-                side: const BorderSide(color: AppColors.statusFault, width: 1.5),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                textStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
-              ),
+          OutlinedButton.icon(
+            onPressed: widget.onLogout,
+            icon: const Icon(Icons.logout, size: 18),
+            label: const Text('Log Out'),
+            style: OutlinedButton.styleFrom(
+              minimumSize: const Size.fromHeight(48),
+              foregroundColor: AppColors.statusFault,
+              side: const BorderSide(color: AppColors.statusFault, width: 1.5),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+              textStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
             ),
           ),
         ],
@@ -109,7 +107,7 @@ class _SettingsCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: AppColors.cardBackground,
         borderRadius: BorderRadius.circular(14),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 4, offset: const Offset(0, 1))],
+        boxShadow: AppDecorations.cardShadow,
       ),
       child: Column(children: children),
     );
@@ -135,7 +133,7 @@ class _SwitchRow extends StatelessWidget {
               style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600, color: AppColors.primaryText),
             ),
           ),
-          Switch(value: value, onChanged: onChanged, activeColor: AppColors.brandRed),
+          Switch(value: value, onChanged: onChanged, activeThumbColor: AppColors.brandRed),
         ],
       ),
     );

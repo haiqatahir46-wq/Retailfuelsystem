@@ -1,48 +1,30 @@
 import 'package:flutter/material.dart';
-import '../data/demo_staff.dart';
-import '../models/staff.dart';
 import '../screens/staff_form_screen.dart';
 import '../screens/staff_management_screen.dart';
+import '../state/app_session.dart';
+import 'route_guard.dart';
 
-/// Staff list, with its own "+ Add Staff" drill-down into the form.
-/// Stateful so it owns the staff list itself: a new hire added via the
-/// form needs to show up in THIS list without the whole screen being
-/// rebuilt from scratch - same reasoning as StationsAddedFlow.
-class StaffFlow extends StatefulWidget {
-  final String stationName;
-
-  @override
-  State<StaffFlow> createState() => _StaffFlowState();
-
-  const StaffFlow({super.key, required this.stationName});
-}
-
-class _StaffFlowState extends State<StaffFlow> {
-  List<StaffMember> _staff = demoStaffMembers;
-
+/// Staff list, with its own "+ Add Staff" drill-down into the form. The
+/// list lives in the session, so a new hire saved on the pushed form shows
+/// up here straight away and is still there the next time Staff opens.
+class StaffFlow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
+    final session = AppSessionScope.of(context);
     return StaffManagementScreen(
-      staff: _staff,
+      staff: session.staff,
       onBack: () => Navigator.of(context).pop(),
       onAddStaff: () {
+        if (!isTopRoute(context)) return;
         Navigator.of(context).push(
           MaterialPageRoute(
             builder: (context) => StaffFormScreen(
-              stationName: widget.stationName,
+              stationName: session.currentStation?.name ?? '',
               onBack: () => Navigator.of(context).pop(),
               onSave: (values) {
-                setState(() {
-                  _staff = [
-                    ..._staff,
-                    StaffMember(
-                      id: 's${_staff.length + 1}',
-                      name: values.fullName,
-                      role: 'Attendant',
-                      phone: values.contactNumber,
-                    ),
-                  ];
-                });
+                // Guarded so a double tap on Save adds one person, not two.
+                if (!isTopRoute(context)) return;
+                session.addStaff(name: values.fullName, role: 'Attendant', phone: values.contactNumber);
                 Navigator.of(context).pop();
               },
             ),
@@ -53,4 +35,6 @@ class _StaffFlowState extends State<StaffFlow> {
       onStaffTap: null,
     );
   }
+
+  const StaffFlow({super.key});
 }

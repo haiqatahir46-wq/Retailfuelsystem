@@ -1,21 +1,37 @@
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import '../data/demo_sales.dart';
+import '../models/nozzle.dart';
 import '../models/sales.dart';
+import '../models/tank_stock.dart';
 import '../theme/app_colors.dart';
+import '../theme/app_decorations.dart';
+import '../theme/tank_health_style.dart';
 import '../widgets/app_bottom_nav_bar.dart';
 import '../widgets/app_drawer.dart';
 import '../widgets/app_top_bar.dart';
+import '../widgets/sales_report_widgets.dart';
+import '../widgets/station_photo.dart';
 import '../widgets/wave_clipper.dart';
-import 'sales_report_screens.dart';
 
+/// The Dashboard tab: today's overview (or a Weekly/Monthly/Yearly sales
+/// report) for one station.
+///
+/// [tanks] and [nozzles] are this station's, from the session
+/// (MainTabsFlow passes session.tanksFor / session.nozzlesFor), so the
+/// Dashboard agrees with Stock, Tanks and Nozzles: [nozzles] gives the
+/// Active Nozzles count and [tanks] the low-stock alert, which lists every
+/// tank that isn't healthy and opens Stock (via [onNavTap]) to reorder.
+/// The sales figures are looked up by [stationId] with salesFor.
 class DashboardScreen extends StatefulWidget {
   final String stationId;
   final String stationName;
   final String userName;
   final String userEmail;
+  final List<TankStock> tanks;
+  final List<Nozzle> nozzles;
   final Widget? stationImage;
-  final ValueChanged<int>? onQuickLinkTap;
+  final ValueChanged<int> onNavTap;
   final VoidCallback? onProfileTap;
   final VoidCallback? onHelpCenterTap;
   final VoidCallback? onSettingsTap;
@@ -25,11 +41,13 @@ class DashboardScreen extends StatefulWidget {
   const DashboardScreen({
     super.key,
     required this.stationId,
-    this.stationName = 'Amir Filling, Pattoki',
-    this.userName = 'Haiqa Tahir',
-    this.userEmail = 'haiqa@parco.example',
+    required this.stationName,
+    required this.userName,
+    required this.userEmail,
+    required this.tanks,
+    required this.nozzles,
+    required this.onNavTap,
     this.stationImage,
-    this.onQuickLinkTap,
     this.onProfileTap,
     this.onHelpCenterTap,
     this.onSettingsTap,
@@ -42,24 +60,19 @@ class DashboardScreen extends StatefulWidget {
 }
 
 class _DashboardScreenState extends State<DashboardScreen> {
-  int _navIndex = 0; // Dashboard tab active
   SalesReportPeriod _period = SalesReportPeriod.today;
 
-  static const _weekLabels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-
   // Everything below is scoped to widget.stationId ONLY - see salesFor()'s
-  // doc comment in sales_report_screens.dart for why this matters: an
-  // owner must never see another station's figures, whether it's their
-  // own second station or (worse) a different owner's station entirely.
-  StationSalesData? get _station => demoSalesByStation[widget.stationId];
+  // doc comment in demo_sales.dart for why this matters: an owner must
+  // never see another station's figures, whether it's their own second
+  // station or (worse) a different owner's station entirely.
   List<PeriodSales> get _periodData => salesFor(widget.stationId, _period);
 
   @override
   Widget build(BuildContext context) {
     // The photo banner only makes sense for Today - once Weekly/Monthly/
     // Yearly show their long scrollable list of periods, the photo would
-    // just get scrolled away, same reasoning as the standalone Today Sale
-    // screen in sales_report_screens.dart.
+    // just get scrolled away.
     final showPhoto = _period == SalesReportPeriod.today;
 
     return Scaffold(
@@ -99,7 +112,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           child: ClipPath(
                             clipper: const WaveClipper(),
                             child: SizedBox.expand(
-                              child: widget.stationImage ?? const _StationPlaceholder(),
+                              child: widget.stationImage ?? const StationPhoto(),
                             ),
                           ),
                         ),
@@ -111,24 +124,24 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              const Text(
-                                'Overview',
-                                style: TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.w700,
-                                  color: AppColors.primaryText,
+                              const Expanded(
+                                child: Text(
+                                  'Overview',
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.w700,
+                                    color: AppColors.primaryText,
+                                  ),
                                 ),
                               ),
-                              // The dropdown sits directly under the photo -
-                              // same dropdown as the standalone sales
-                              // report screens, picking a period actually
-                              // swaps the content below, it isn't
-                              // decorative.
+                              // The dropdown sits directly under the photo:
+                              // picking a period swaps the content below,
+                              // it isn't decorative.
                               PeriodDropdown(
                                 period: _period,
-                                label: periodLabel(_period),
                                 onChanged: (p) => setState(() => _period = p),
                               ),
                             ],
@@ -145,107 +158,102 @@ class _DashboardScreenState extends State<DashboardScreen> {
           ],
         ),
       ),
-      bottomNavigationBar: AppBottomNavBar(
-        currentIndex: _navIndex,
-        onTap: (i) {
-          setState(() => _navIndex = i);
-          widget.onQuickLinkTap?.call(i);
-        },
-      ),
+      bottomNavigationBar: AppBottomNavBar(currentIndex: AppTab.dashboard, onTap: widget.onNavTap),
     );
   }
 
   /// Today = the original Dashboard Overview: aggregate stat cards, the
   /// low-stock alert, the 7-day trend chart and the fuel breakdown - all
-  /// computed from THIS station's own today entry via the shared litres ×
-  /// price formula, never separate hand-typed numbers that could drift
-  /// out of sync with (or leak) another station's figures.
+  /// computed from THIS station's own today rows (combined with
+  /// PeriodSales.sum, the same way the tank levels and the Today report
+  /// add them up) via the shared litres × price formula, never separate
+  /// hand-typed numbers that could drift out of sync with (or leak)
+  /// another station's figures. The active count comes from the same
+  /// nozzle list the Nozzles tab shows ([DashboardScreen.nozzles]), and the
+  /// alert from the same tanks Stock shows ([DashboardScreen.tanks]).
   List<Widget> _buildTodayContent() {
-    final station = _station;
-    final today = _periodData.isNotEmpty ? _periodData.first : null;
-    final totalLitres = today == null ? 0.0 : today.petrolL + today.dieselL + today.octaneL;
-    final totalRevenue = today?.totalRevenue ?? 0.0;
+    final today = PeriodSales.sum(_periodData, label: 'Today');
+    final nozzles = widget.nozzles;
+    final dispensing = nozzles.where((n) => n.status == NozzleStatus.dispensing).length;
+    // Critical before low, so the worst tank comes first and sets the
+    // banner's color.
+    final lowTanks = [
+      for (final health in [TankHealth.critical, TankHealth.low])
+        ...widget.tanks.where((t) => t.health == health),
+    ];
 
     return [
-      Row(
-        children: [
-          Expanded(
-            child: _StatCard(
-              icon: Icons.swap_vert,
-              value: 'PKR ${formatThousands(totalRevenue)}',
-              label: 'Revenue Today',
+      // IntrinsicHeight + stretch: the three cards stay one height even
+      // when one label wraps to a second line.
+      IntrinsicHeight(
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Expanded(
+              child: _StatCard(
+                icon: Icons.swap_vert,
+                value: 'PKR ${formatThousands(today.totalRevenue)}',
+                label: 'Revenue Today',
+              ),
             ),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: _StatCard(
-              icon: Icons.local_gas_station_outlined,
-              value: '${formatThousands(totalLitres)} L',
-              label: 'Litres Dispensed',
+            const SizedBox(width: 10),
+            Expanded(
+              child: _StatCard(
+                icon: Icons.local_gas_station_outlined,
+                value: '${formatThousands(today.totalLitres)} L',
+                label: 'Litres Dispensed',
+              ),
             ),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: _StatCard(
-              icon: Icons.access_time,
-              value: station?.activePumps ?? '0 / 0',
-              label: 'Active Pumps',
+            const SizedBox(width: 10),
+            Expanded(
+              child: _StatCard(
+                icon: Icons.access_time,
+                value: '$dispensing / ${nozzles.length}',
+                label: 'Active Nozzles',
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
+      if (lowTanks.isNotEmpty) ...[
+        const SizedBox(height: 14),
+        // Create Reorder lives on Stock, so that's where the alert goes.
+        _LowStockBanner(tanks: lowTanks, onTap: () => widget.onNavTap(AppTab.stock)),
+      ],
       const SizedBox(height: 14),
-      const _AlertBanner(
-        text: 'Diesel tank is below reorder threshold (5,000 L left)',
-        actionLabel: 'Reorder',
-      ),
-      const SizedBox(height: 14),
-      _SalesTrendChart(values: station?.weekTrend ?? const [], labels: _weekLabels),
+      _SalesTrendChart(rows: salesFor(widget.stationId, SalesReportPeriod.weekly)),
       const SizedBox(height: 20),
       const Text(
         'Fuel Breakdown',
         style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: AppColors.primaryText),
       ),
       const SizedBox(height: 12),
-      Row(
-        children: [
-          Expanded(
-            child: _FuelMiniCard(
-              dotColor: AppColors.brandRed,
-              name: 'Petrol',
-              litres: '${formatThousands(today?.petrolL ?? 0)} L',
-              revenue: 'PKR ${formatThousands(today?.petrolRevenue ?? 0)}',
-            ),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: _FuelMiniCard(
-              dotColor: AppColors.primaryText,
-              name: 'Diesel',
-              litres: '${formatThousands(today?.dieselL ?? 0)} L',
-              revenue: 'PKR ${formatThousands(today?.dieselRevenue ?? 0)}',
-            ),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: _FuelMiniCard(
-              dotColor: AppColors.statusDispensing,
-              name: 'Hi-Octane',
-              litres: '${formatThousands(today?.octaneL ?? 0)} L',
-              revenue: 'PKR ${formatThousands(today?.octaneRevenue ?? 0)}',
-            ),
-          ),
-        ],
+      IntrinsicHeight(
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            for (final (i, fuel) in kFuelGrades.indexed) ...[
+              if (i > 0) const SizedBox(width: 10),
+              Expanded(
+                child: _FuelMiniCard(
+                  dotColor: AppColors.fuel(fuel),
+                  name: fuel,
+                  litres: '${formatThousands(today.litresOf(fuel))} L',
+                  revenue: 'PKR ${formatThousands(today.litresOf(fuel) * pricePerLitre(fuel))}',
+                ),
+              ),
+            ],
+          ],
+        ),
       ),
     ];
   }
 
-  /// Weekly/Monthly/Yearly = the same total-revenue card, per-period cards
-  /// and bar/line chart already built (and working) for the standalone
-  /// Weekly/Monthly/Yearly screens - reused here so the two never drift.
+  /// Weekly/Monthly/Yearly: the total-revenue card, one card per period
+  /// row and the chart (lib/widgets/sales_report_widgets.dart).
   List<Widget> _buildPeriodContent() {
     final data = _periodData;
-    final totalRevenue = data.fold<double>(0, (sum, d) => sum + d.totalRevenue);
+    final totalRevenue = PeriodSales.sum(data).totalRevenue;
 
     return [
       TotalRevenueCard(label: periodLabel(_period), total: 'PKR ${formatThousands(totalRevenue)}'),
@@ -259,9 +267,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
     ];
   }
 }
-
-// AppTopBar and StationRow now live in ../widgets/app_top_bar.dart, shared
-// with StockScreen (and any other main tab) instead of duplicated here.
 
 class _StatCard extends StatelessWidget {
   final IconData icon;
@@ -277,7 +282,7 @@ class _StatCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: AppColors.cardBackground,
         borderRadius: BorderRadius.circular(14),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 4, offset: const Offset(0, 1))],
+        boxShadow: AppDecorations.cardShadow,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -290,7 +295,17 @@ class _StatCard extends StatelessWidget {
             decoration: BoxDecoration(color: AppColors.redLightSelected, borderRadius: BorderRadius.circular(8)),
             child: Icon(icon, size: 15, color: AppColors.brandRed),
           ),
-          Text(value, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: AppColors.primaryText)),
+          // A third of a phone's width is tight for "PKR 1,512,000", so the
+          // figure shrinks to fit rather than wrapping or overflowing.
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: Text(
+              value,
+              maxLines: 1,
+              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: AppColors.primaryText),
+            ),
+          ),
           const SizedBox(height: 2),
           Text(label, style: const TextStyle(fontSize: 11, color: AppColors.secondaryText)),
         ],
@@ -299,136 +314,229 @@ class _StatCard extends StatelessWidget {
   }
 }
 
-class _AlertBanner extends StatelessWidget {
-  final String text;
-  final String actionLabel;
+/// The low-stock alert: one line per tank below its reorder threshold,
+/// e.g. "Petrol is critical: 7,000 L left (threshold 18,000 L)". [tanks]
+/// come worst first, and the first one's health colors the banner. The
+/// whole banner, "Reorder" included, is one tap target for [onTap].
+class _LowStockBanner extends StatelessWidget {
+  final List<TankStock> tanks;
+  final VoidCallback onTap;
 
-  const _AlertBanner({required this.text, required this.actionLabel});
+  const _LowStockBanner({required this.tanks, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-      decoration: BoxDecoration(
-        color: const Color(0xFFFFF8EC),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFFBE3B8)),
-      ),
-      child: Row(
-        children: [
-          const Icon(Icons.warning_amber_rounded, color: AppColors.statusAttention, size: 20),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Text(
-              text,
-              style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: Color(0xFF7A5A17)),
-            ),
+    final color = tanks.first.health.color;
+    final radius = BorderRadius.circular(12);
+
+    return Material(
+      color: color.withValues(alpha: 0.08),
+      shape: RoundedRectangleBorder(borderRadius: radius, side: BorderSide(color: color.withValues(alpha: 0.35))),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: radius,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          child: Row(
+            children: [
+              Icon(Icons.warning_amber_rounded, color: color, size: 20),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    for (final (i, tank) in tanks.indexed)
+                      Padding(
+                        padding: EdgeInsets.only(top: i == 0 ? 0 : 4),
+                        child: Text(
+                          '${tank.fuelName} is ${tank.health.label.toLowerCase()}: '
+                          '${formatThousands(tank.currentVolume)} L left '
+                          '(threshold ${formatThousands(tank.threshold)} L)',
+                          style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: AppColors.primaryText),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              const Text(
+                'Reorder',
+                style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.brandRed),
+              ),
+              const Icon(Icons.chevron_right, size: 16, color: AppColors.brandRed),
+            ],
           ),
-          const SizedBox(width: 8),
-          Text(
-            actionLabel,
-            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.brandRed),
-          ),
-        ],
+        ),
       ),
     );
   }
 }
 
-/// 7-day aggregate sales trend, drawn with fl_chart's LineChart. Only shown
-/// for the Today period - Weekly/Monthly/Yearly use SalesBarChart instead.
+/// 7-day revenue trend, drawn with fl_chart's LineChart. Only shown for the
+/// Today period - Weekly/Monthly/Yearly use SalesBarChart instead.
+///
+/// Built straight from the station's weekly sales rows (one point per row,
+/// its totalRevenue), so the line, the change badge and the axis labels
+/// always match the Weekly report rather than a separately typed series.
 class _SalesTrendChart extends StatelessWidget {
-  final List<double> values;
-  final List<String> labels;
+  final List<PeriodSales> rows;
 
-  const _SalesTrendChart({required this.values, required this.labels});
+  const _SalesTrendChart({required this.rows});
 
   @override
   Widget build(BuildContext context) {
-    final spots = [
-      for (var i = 0; i < values.length; i++) FlSpot(i.toDouble(), values[i]),
-    ];
+    final values = [for (final r in rows) r.totalRevenue];
 
     return Container(
       padding: const EdgeInsets.fromLTRB(16, 14, 16, 8),
       decoration: BoxDecoration(
         color: AppColors.cardBackground,
         borderRadius: BorderRadius.circular(14),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 4, offset: const Offset(0, 1))],
+        boxShadow: AppDecorations.cardShadow,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: const [
-              Text(
-                'Sales Trend (7 Days)',
-                style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.primaryText),
+            children: [
+              const Flexible(
+                child: Text(
+                  'Sales Trend (PKR, 7 Days)',
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.primaryText),
+                ),
               ),
-              Text(
-                '▲ 12.4%',
-                style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.statusDispensing),
-              ),
+              const SizedBox(width: 8),
+              ?_changeBadge(values),
             ],
           ),
           const SizedBox(height: 8),
-          SizedBox(
-            height: 120,
-            child: LineChart(
-              LineChartData(
-                gridData: FlGridData(
-                  show: true,
-                  drawVerticalLine: false,
-                  horizontalInterval: 40,
-                  getDrawingHorizontalLine: (_) => FlLine(color: AppColors.borderDivider, strokeWidth: 1),
+          if (values.isEmpty)
+            const SizedBox(
+              height: 120,
+              child: Center(
+                child: Text(
+                  'No sales recorded this week yet.',
+                  style: TextStyle(fontSize: 12.5, color: AppColors.secondaryText),
                 ),
-                titlesData: const FlTitlesData(show: false),
-                borderData: FlBorderData(show: false),
-                lineTouchData: const LineTouchData(enabled: true),
-                minY: 0,
-                maxY: 110,
-                lineBarsData: [
-                  LineChartBarData(
-                    spots: spots,
-                    isCurved: true,
-                    color: AppColors.brandRed,
-                    barWidth: 3,
-                    dotData: FlDotData(
-                      show: true,
-                      getDotPainter: (spot, percent, bar, index) => FlDotCirclePainter(
-                        radius: index == spots.length - 1 ? 4 : 0,
-                        color: AppColors.brandRed,
-                        strokeWidth: 0,
-                      ),
-                    ),
-                    belowBarData: BarAreaData(
-                      show: true,
-                      gradient: LinearGradient(
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
-                        colors: [
-                          AppColors.brandRed.withOpacity(0.18),
-                          AppColors.brandRed.withOpacity(0),
-                        ],
-                      ),
-                    ),
-                  ),
-                ],
               ),
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.only(top: 2, bottom: 4),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: labels
-                  .map((d) => Text(d, style: const TextStyle(fontSize: 10, color: AppColors.secondaryText)))
-                  .toList(),
-            ),
-          ),
+            )
+          else
+            SizedBox(height: 140, child: LineChart(_chartData(values))),
         ],
       ),
+    );
+  }
+
+  /// "▲ 12.4%" (green) or "▼ 3.1%" (red): the change from the first point to
+  /// the last. Null - so nothing is shown - when there aren't two points to
+  /// compare or the first is 0 (no meaningful percentage).
+  Widget? _changeBadge(List<double> values) {
+    if (values.length < 2 || values.first == 0) return null;
+    final change = (values.last - values.first) / values.first * 100;
+    final up = change >= 0;
+    return Text(
+      '${up ? '▲' : '▼'} ${change.abs().toStringAsFixed(1)}%',
+      style: TextStyle(
+        fontSize: 12,
+        fontWeight: FontWeight.w700,
+        color: up ? AppColors.statusDispensing : AppColors.statusFault,
+      ),
+    );
+  }
+
+  LineChartData _chartData(List<double> values) {
+    final spots = [
+      for (var i = 0; i < values.length; i++) FlSpot(i.toDouble(), values[i]),
+    ];
+    // Round steps with a little headroom, so the line and its end dot never
+    // touch the top edge; all-zero data still gets a non-zero range.
+    final axis = chartYAxis(values.reduce((a, b) => a > b ? a : b));
+
+    return LineChartData(
+      minY: 0,
+      maxY: axis.maxY,
+      // A little padding either side, so the first and last labels sit
+      // fully under their points instead of hanging off the card.
+      minX: -0.3,
+      maxX: values.length - 1 + 0.3,
+      gridData: FlGridData(
+        show: true,
+        drawVerticalLine: false,
+        horizontalInterval: axis.step,
+        getDrawingHorizontalLine: (_) => FlLine(color: AppColors.borderDivider, strokeWidth: 1),
+      ),
+      titlesData: FlTitlesData(
+        leftTitles: compactLeftTitles(axis.step),
+        rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+        topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+        bottomTitles: AxisTitles(
+          sideTitles: SideTitles(
+            showTitles: true,
+            interval: 1,
+            reservedSize: 22,
+            getTitlesWidget: (value, meta) {
+              // Only whole x values are data points; skip the padding edges.
+              final i = value.round();
+              if (value != i || i < 0 || i >= rows.length) return const SizedBox.shrink();
+              return Padding(
+                padding: const EdgeInsets.only(top: 6),
+                child: Text(
+                  chartAxisLabel(rows[i].label),
+                  style: const TextStyle(fontSize: 10, color: AppColors.secondaryText),
+                ),
+              );
+            },
+          ),
+        ),
+      ),
+      borderData: FlBorderData(show: false),
+      lineTouchData: LineTouchData(
+        enabled: true,
+        touchTooltipData: LineTouchTooltipData(
+          getTooltipColor: (_) => AppColors.primaryText,
+          fitInsideHorizontally: true,
+          fitInsideVertically: true,
+          getTooltipItems: (touched) => [
+            for (final s in touched)
+              LineTooltipItem(
+                '${rows[s.spotIndex].label}: PKR ${formatThousands(s.y)}',
+                const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Colors.white),
+              ),
+          ],
+        ),
+      ),
+      lineBarsData: [
+        LineChartBarData(
+          spots: spots,
+          isCurved: true,
+          // Keeps the curve from overshooting below 0 or above a peak
+          // between points, so it never suggests a value that wasn't there.
+          preventCurveOverShooting: true,
+          color: AppColors.brandRed,
+          barWidth: 3,
+          dotData: FlDotData(
+            show: true,
+            getDotPainter: (spot, percent, bar, index) => FlDotCirclePainter(
+              radius: index == spots.length - 1 ? 4 : 0,
+              color: AppColors.brandRed,
+              strokeWidth: 0,
+            ),
+          ),
+          belowBarData: BarAreaData(
+            show: true,
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [
+                AppColors.brandRed.withValues(alpha: 0.18),
+                AppColors.brandRed.withValues(alpha: 0),
+              ],
+            ),
+          ),
+        ),
+      ],
     );
   }
 }
@@ -453,7 +561,7 @@ class _FuelMiniCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: AppColors.cardBackground,
         borderRadius: BorderRadius.circular(14),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 4, offset: const Offset(0, 1))],
+        boxShadow: AppDecorations.cardShadow,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -462,37 +570,35 @@ class _FuelMiniCard extends StatelessWidget {
             children: [
               Container(width: 8, height: 8, decoration: BoxDecoration(color: dotColor, shape: BoxShape.circle)),
               const SizedBox(width: 6),
-              Text(name, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.primaryText)),
+              Flexible(
+                child: Text(
+                  name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.primaryText),
+                ),
+              ),
             ],
           ),
           const SizedBox(height: 6),
-          Text(litres, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: AppColors.primaryText)),
+          // Figures shrink to the card's width instead of wrapping.
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: Text(
+              litres,
+              maxLines: 1,
+              style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: AppColors.primaryText),
+            ),
+          ),
           const SizedBox(height: 2),
-          Text(revenue, style: const TextStyle(fontSize: 11, color: AppColors.secondaryText)),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: Text(revenue, maxLines: 1, style: const TextStyle(fontSize: 11, color: AppColors.secondaryText)),
+          ),
         ],
       ),
-    );
-  }
-}
-
-/// Shown when no real station photo has been supplied yet. To wire in the
-/// real TOTAL PARCO photo, pass:
-///   DashboardScreen(
-///     stationImage: Image.asset(
-///       'assets/images/station.webp',
-///       fit: BoxFit.cover,
-///       alignment: const Alignment(0, 0.2), // keep the canopy/signage in frame, not the sky
-///     ),
-///   )
-class _StationPlaceholder extends StatelessWidget {
-  const _StationPlaceholder();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      color: AppColors.redLightSelected,
-      alignment: Alignment.center,
-      child: const Icon(Icons.local_gas_station, size: 40, color: AppColors.brandRed),
     );
   }
 }

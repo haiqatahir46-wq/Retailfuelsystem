@@ -1,7 +1,12 @@
 import 'package:flutter/material.dart';
+import '../models/sales.dart';
 import '../models/tank_stock.dart';
 import '../theme/app_colors.dart';
+import '../theme/app_decorations.dart';
+import '../utils/validators.dart';
 import '../widgets/app_text_field.dart';
+import '../widgets/empty_state.dart';
+import '../widgets/tank_widgets.dart';
 
 /// Opened from the "Create Reorder" button on any tank card in
 /// StockScreen - a SEPARATE screen from ThresholdScreen, reached
@@ -10,6 +15,11 @@ import '../widgets/app_text_field.dart';
 /// blank reorder-quantity field per tank - nothing pre-filled, the owner
 /// enters how much they actually want to order. No bottom nav (this is a
 /// drill-down, not a tab), just a back arrow to return to Stock.
+///
+/// A quantity must be above 0 and fit in the space left in the tank
+/// (capacity minus current volume; commas allowed). A full tank can't be
+/// reordered: its field and Submit are disabled. After a valid Submit the
+/// field empties for the next order.
 class CreateReorderScreen extends StatefulWidget {
   final String stationName;
   final List<TankStock> tanks;
@@ -29,9 +39,21 @@ class CreateReorderScreen extends StatefulWidget {
 }
 
 class _CreateReorderScreenState extends State<CreateReorderScreen> {
-  late final Map<String, TextEditingController> _controllers = {
-    for (final tank in widget.tanks) tank.fuelName: TextEditingController(),
-  };
+  // All keyed by tank id, not fuel name, so two tanks of the same grade each
+  // keep their own field. Created on first use, so a tank that appears
+  // while the screen is open gets one too.
+  final _controllers = <String, TextEditingController>{};
+  final _formKeys = <String, GlobalKey<FormState>>{};
+
+  /// Tanks whose Submit has been tried: their field re-checks as it is
+  /// edited, so an error clears as soon as it is fixed.
+  final _tried = <String>{};
+
+  TextEditingController _controllerFor(String id) => _controllers.putIfAbsent(id, TextEditingController.new);
+  GlobalKey<FormState> _formKeyFor(String id) => _formKeys.putIfAbsent(id, GlobalKey<FormState>.new);
+
+  /// Litres the tank can still take.
+  static double _spaceLeft(TankStock tank) => (tank.capacity - tank.currentVolume).clamp(0.0, double.infinity);
 
   @override
   void dispose() {
@@ -42,15 +64,18 @@ class _CreateReorderScreenState extends State<CreateReorderScreen> {
   }
 
   void _submit(TankStock tank) {
-    final text = _controllers[tank.fuelName]!.text.trim();
-    final value = double.tryParse(text);
-    if (value != null) widget.onSubmitReorder?.call(tank, value);
+    final form = _formKeyFor(tank.id).currentState!;
+    if (!form.validate()) {
+      setState(() => _tried.add(tank.id));
+      return;
+    }
+    widget.onSubmitReorder?.call(tank, parseNumber(_controllerFor(tank.id).text)!);
+    // Empty the field for the next order without flagging it: back to
+    // checking only on the next Submit. (Not form.reset(): with a
+    // controller, that can restore an older value behind the field.)
+    setState(() => _tried.remove(tank.id));
+    _controllerFor(tank.id).clear();
   }
-
-  String _fmt(double v) => v.toStringAsFixed(0).replaceAllMapped(
-        RegExp(r'\B(?=(\d{3})+(?!\d))'),
-        (m) => ',',
-      );
 
   @override
   Widget build(BuildContext context) {
@@ -78,80 +103,77 @@ class _CreateReorderScreenState extends State<CreateReorderScreen> {
             style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: AppColors.primaryText),
           ),
           const SizedBox(height: 18),
-          for (final tank in widget.tanks) ...[
-            Container(
-              padding: const EdgeInsets.all(16),
-              margin: const EdgeInsets.only(bottom: 14),
-              decoration: BoxDecoration(
-                color: AppColors.cardBackground,
-                borderRadius: BorderRadius.circular(16),
-                boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 4, offset: const Offset(0, 1))],
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    tank.fuelName,
-                    style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: AppColors.primaryText),
-                  ),
-                  const SizedBox(height: 10),
-                  Row(
-                    children: [
-                      _Stat(label: 'Tank Capacity', value: '${_fmt(tank.capacity)} L'),
-                      _Stat(label: 'Current Volume', value: '${_fmt(tank.currentVolume)} L'),
-                      _Stat(label: 'Threshold', value: '${_fmt(tank.threshold)} L'),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                  AppTextField(
-                    label: 'Reorder Quantity (L)',
-                    hint: 'Enter litres to order',
-                    controller: _controllers[tank.fuelName]!,
-                    keyboardType: TextInputType.number,
-                  ),
-                  const SizedBox(height: 12),
-                  SizedBox(
-                    height: 42,
-                    width: double.infinity,
-                    child: ElevatedButton(
-                      onPressed: () => _submit(tank),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.brandRed,
-                        foregroundColor: Colors.white,
-                        elevation: 0,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                        textStyle: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700),
-                      ),
-                      child: const Text('Submit'),
-                    ),
-                  ),
-                ],
+          if (widget.tanks.isEmpty) const EmptyState('No tanks set up for this station yet.'),
+          for (final tank in widget.tanks) _buildTankCard(tank),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTankCard(TankStock tank) {
+    final space = _spaceLeft(tank);
+    final full = space <= 0;
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      margin: const EdgeInsets.only(bottom: 14),
+      decoration: AppDecorations.card,
+      child: Form(
+        key: _formKeyFor(tank.id),
+        autovalidateMode: _tried.contains(tank.id) ? AutovalidateMode.onUserInteraction : AutovalidateMode.disabled,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              tank.fuelName,
+              style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: AppColors.primaryText),
+            ),
+            const SizedBox(height: 10),
+            Row(
+              children: [
+                TankStat(label: 'Tank Capacity', value: '${formatThousands(tank.capacity)} L'),
+                TankStat(label: 'Current Volume', value: '${formatThousands(tank.currentVolume)} L'),
+                TankStat(label: 'Threshold', value: '${formatThousands(tank.threshold)} L'),
+              ],
+            ),
+            const SizedBox(height: 12),
+            AppTextField(
+              label: 'Reorder Quantity (L)',
+              hint: full ? '' : 'Up to ${formatThousands(space)} L',
+              controller: _controllerFor(tank.id),
+              enabled: !full,
+              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              textInputAction: TextInputAction.done,
+              validator: Validators.positiveNumber(
+                max: space,
+                maxMessage: 'Only ${formatThousands(space)} L of space left in this tank',
               ),
             ),
+            if (full) ...[
+              const SizedBox(height: 8),
+              const Text(
+                'Tank is full',
+                style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.statusDispensing),
+              ),
+            ],
+            const SizedBox(height: 12),
+            ElevatedButton(
+              onPressed: full ? null : () => _submit(tank),
+              style: ElevatedButton.styleFrom(
+                // A minimum height, not a fixed one, so larger text makes
+                // the button taller instead of clipping its label.
+                minimumSize: const Size.fromHeight(42),
+                backgroundColor: AppColors.brandRed,
+                foregroundColor: Colors.white,
+                elevation: 0,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                textStyle: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700),
+              ),
+              child: const Text('Submit'),
+            ),
           ],
-        ],
+        ),
       ),
     );
   }
-}
-
-class _Stat extends StatelessWidget {
-  final String label;
-  final String value;
-
-  @override
-  Widget build(BuildContext context) {
-    return Expanded(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(value, style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700, color: AppColors.primaryText)),
-          const SizedBox(height: 2),
-          Text(label, style: const TextStyle(fontSize: 10.5, color: AppColors.secondaryText)),
-        ],
-      ),
-    );
-  }
-
-  const _Stat({required this.label, required this.value});
 }

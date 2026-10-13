@@ -1,6 +1,9 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Needed for Google Places location search. Debug/profile builds get
+         it from their own manifests, but release builds only see this one. -->
+    <uses-permission android:name="android.permission.INTERNET"/>
     <application
-        android:label="petrolpump_flutter"
+        android:label="PARCO Fuel System"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity

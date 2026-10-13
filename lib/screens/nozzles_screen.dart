@@ -1,32 +1,54 @@
 import 'package:flutter/material.dart';
+import '../data/demo_sales.dart';
+import '../models/nozzle.dart';
+import '../models/sales.dart';
 import '../theme/app_colors.dart';
+import '../theme/app_decorations.dart';
 import '../widgets/app_bottom_nav_bar.dart';
+import '../widgets/app_top_bar.dart';
+import '../widgets/empty_state.dart';
 
 /// Nozzles screen - the per-nozzle sales/status detail (fuel filter,
-/// today's Petrol totals, live nozzle status list). No chart here and no
-/// photo - that overview-level content belongs on the Dashboard instead.
-/// The nozzle list length/content is per-station, wired up from real data
-/// later; this is the layout + styling.
+/// today's totals for the selected grade, live nozzle status list). No
+/// chart here and no photo - that overview-level content belongs on the
+/// Dashboard instead.
+///
+/// [nozzles] are THIS station's, every grade, from the session
+/// (MainTabsFlow passes session.nozzlesFor) - the same list the Dashboard's
+/// active/total count reads. Everything below the fuel chips follows the
+/// selected grade: the sales card (today's litres from salesFor by
+/// [stationId], revenue = litres × pricePerLitre, the same formula as the
+/// Dashboard), the status counts and the nozzle cards.
 class NozzlesScreen extends StatefulWidget {
+  final String stationId;
   final String stationName;
-  final ValueChanged<int>? onNavTap;
+  final List<Nozzle> nozzles;
+  final ValueChanged<int> onNavTap;
 
   @override
   State<NozzlesScreen> createState() => _NozzlesScreenState();
 
   const NozzlesScreen({
     super.key,
-    this.stationName = 'Amir Filling, Pattoki',
-    this.onNavTap,
+    required this.stationId,
+    required this.stationName,
+    required this.nozzles,
+    required this.onNavTap,
   });
 }
 
 class _NozzlesScreenState extends State<NozzlesScreen> {
-  int _navIndex = 1; // Nozzles tab active
   int _fuelIndex = 0; // Petrol selected
 
   @override
   Widget build(BuildContext context) {
+    final fuelName = kFuelGrades[_fuelIndex];
+    final nozzles = [
+      for (final n in widget.nozzles)
+        if (n.fuelName == fuelName) n,
+    ];
+    final litresToday = PeriodSales.sum(salesFor(widget.stationId, SalesReportPeriod.today)).litresOf(fuelName);
+
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
@@ -40,62 +62,61 @@ class _NozzlesScreenState extends State<NozzlesScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: const [
-                        Text(
-                          'Nozzle Sales',
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.w700,
-                            color: AppColors.primaryText,
+                    const Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            'Nozzle Sales',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.primaryText,
+                            ),
                           ),
                         ),
+                        SizedBox(width: 8),
                         _TodayDropdown(),
                       ],
                     ),
                     const SizedBox(height: 14),
                     Row(
                       children: [
-                        Expanded(
-                          child: _FuelChip(
-                            label: 'Petrol',
-                            selected: _fuelIndex == 0,
-                            onTap: () => setState(() => _fuelIndex = 0),
+                        for (final (i, fuel) in kFuelGrades.indexed) ...[
+                          if (i > 0) const SizedBox(width: 8),
+                          Expanded(
+                            child: _FuelChip(
+                              label: fuel,
+                              selected: _fuelIndex == i,
+                              onTap: () => setState(() => _fuelIndex = i),
+                            ),
                           ),
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: _FuelChip(
-                            label: 'Diesel',
-                            selected: _fuelIndex == 1,
-                            onTap: () => setState(() => _fuelIndex = 1),
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: _FuelChip(
-                            label: 'Hi-Octane',
-                            selected: _fuelIndex == 2,
-                            onTap: () => setState(() => _fuelIndex = 2),
-                          ),
-                        ),
+                        ],
                       ],
                     ),
                     const SizedBox(height: 14),
-                    const _SalesCard(),
+                    _SalesCard(
+                      fuelName: fuelName,
+                      litres: litresToday,
+                      revenue: litresToday * pricePerLitre(fuelName),
+                    ),
                     const SizedBox(height: 20),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: const [
-                        Text(
-                          'Nozzle Status',
-                          style: TextStyle(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w700,
-                            color: AppColors.primaryText,
+                    const Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            'Nozzle Status',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.primaryText,
+                            ),
                           ),
                         ),
+                        SizedBox(width: 8),
                         Text(
                           'View All',
                           style: TextStyle(
@@ -107,25 +128,13 @@ class _NozzlesScreenState extends State<NozzlesScreen> {
                       ],
                     ),
                     const SizedBox(height: 12),
-                    const _StatusChips(),
+                    _StatusChips(nozzles: nozzles),
                     const SizedBox(height: 12),
-                    const _NozzleCard(
-                      name: 'Pump 1 · Nozzle 1',
-                      grade: 'Petrol',
-                      litres: '12.76 L',
-                      flow: '32.4 L/min',
-                      lastUpdate: '1 min ago',
-                      status: NozzleStatus.dispensing,
-                    ),
-                    const SizedBox(height: 10),
-                    const _NozzleCard(
-                      name: 'Pump 1 · Nozzle 2',
-                      grade: 'Petrol',
-                      litres: '0.00 L',
-                      flow: '0 L/min',
-                      lastUpdate: '5 min ago',
-                      status: NozzleStatus.idle,
-                    ),
+                    if (nozzles.isEmpty) EmptyState('No $fuelName nozzles set up for this station yet.'),
+                    for (final nozzle in nozzles) ...[
+                      _NozzleCard(nozzle: nozzle),
+                      const SizedBox(height: 10),
+                    ],
                   ],
                 ),
               ),
@@ -133,17 +142,13 @@ class _NozzlesScreenState extends State<NozzlesScreen> {
           ],
         ),
       ),
-      bottomNavigationBar: AppBottomNavBar(
-        currentIndex: _navIndex,
-        onTap: (i) {
-          setState(() => _navIndex = i);
-          widget.onNavTap?.call(i);
-        },
-      ),
+      bottomNavigationBar: AppBottomNavBar(currentIndex: AppTab.nozzles, onTap: widget.onNavTap),
     );
   }
 }
 
+/// The brand, bell and avatar row (the same pieces as the Dashboard's
+/// AppTopBar, without its menu and Help icons) over the station name.
 class _Header extends StatelessWidget {
   final String stationName;
 
@@ -156,75 +161,21 @@ class _Header extends StatelessWidget {
       ),
       child: Column(
         children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(20, 14, 20, 8),
+          const Padding(
+            // Less on the right and above and below: the avatar's 48dp tap
+            // target supplies that space itself.
+            padding: EdgeInsets.fromLTRB(20, 4, 10, 0),
             child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Row(
-                  children: [
-                    Container(
-                      width: 28,
-                      height: 28,
-                      alignment: Alignment.center,
-                      decoration: BoxDecoration(
-                        color: AppColors.brandRed,
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      child: const Text(
-                        'P',
-                        style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 13),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    const Text(
-                      'PARCO',
-                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: AppColors.primaryText),
-                    ),
-                  ],
-                ),
-                Row(
-                  children: [
-                    Stack(
-                      clipBehavior: Clip.none,
-                      children: [
-                        const Icon(Icons.notifications_outlined, color: AppColors.secondaryText, size: 22),
-                        Positioned(
-                          top: -1,
-                          right: -1,
-                          child: Container(
-                            width: 8,
-                            height: 8,
-                            decoration: const BoxDecoration(
-                              color: AppColors.brandRed,
-                              shape: BoxShape.circle,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(width: 14),
-                    const CircleAvatar(radius: 14, backgroundColor: AppColors.borderDivider),
-                  ],
-                ),
+                Expanded(child: AppBrandMark()),
+                NotificationBell(),
+                // Profile isn't reachable from this tab yet, so the avatar
+                // has nothing to open.
+                ProfileAvatarButton(),
               ],
             ),
           ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(20, 0, 20, 10),
-            child: Row(
-              children: [
-                const Icon(Icons.location_on_outlined, color: AppColors.brandRed, size: 16),
-                const SizedBox(width: 6),
-                Text(
-                  stationName,
-                  style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.primaryText),
-                ),
-                const SizedBox(width: 4),
-                const Icon(Icons.keyboard_arrow_down, color: AppColors.secondaryText, size: 16),
-              ],
-            ),
-          ),
+          StationRow(stationName: stationName, padding: const EdgeInsets.fromLTRB(20, 0, 20, 10)),
         ],
       ),
     );
@@ -237,6 +188,7 @@ class _TodayDropdown extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return const Row(
+      mainAxisSize: MainAxisSize.min,
       children: [
         Text('Today', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.secondaryText)),
         SizedBox(width: 2),
@@ -259,7 +211,7 @@ class _FuelChip extends StatelessWidget {
       onTap: onTap,
       borderRadius: BorderRadius.circular(12),
       child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 10),
+        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 4),
         decoration: BoxDecoration(
           color: selected ? AppColors.redLightSelected : AppColors.cardBackground,
           borderRadius: BorderRadius.circular(12),
@@ -276,12 +228,16 @@ class _FuelChip extends StatelessWidget {
               color: selected ? AppColors.brandRed : AppColors.secondaryText,
             ),
             const SizedBox(height: 4),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: selected ? FontWeight.w700 : FontWeight.w600,
-                color: selected ? AppColors.brandRed : AppColors.secondaryText,
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Text(
+                label,
+                maxLines: 1,
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: selected ? FontWeight.w700 : FontWeight.w600,
+                  color: selected ? AppColors.brandRed : AppColors.secondaryText,
+                ),
               ),
             ),
           ],
@@ -293,7 +249,12 @@ class _FuelChip extends StatelessWidget {
   const _FuelChip({required this.label, required this.selected, required this.onTap});
 }
 
+/// Today's litres and revenue for the selected grade.
 class _SalesCard extends StatelessWidget {
+  final String fuelName;
+  final double litres;
+  final double revenue;
+
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -302,21 +263,21 @@ class _SalesCard extends StatelessWidget {
         color: AppColors.cardBackground,
         borderRadius: BorderRadius.circular(14),
         border: const Border(left: BorderSide(color: AppColors.brandRed, width: 4)),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 4, offset: const Offset(0, 1))],
+        boxShadow: AppDecorations.cardShadow,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Petrol Sales (Today)',
-            style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.secondaryText),
+          Text(
+            '$fuelName Sales (Today)',
+            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.secondaryText),
           ),
           const SizedBox(height: 10),
           Row(
-            children: const [
-              _StatBlock(label: 'Total Litres', value: '18,000 L'),
-              SizedBox(width: 32),
-              _StatBlock(label: 'Total Revenue', value: 'PKR 908,000'),
+            children: [
+              Expanded(child: _StatBlock(label: 'Total Litres', value: '${formatThousands(litres)} L')),
+              const SizedBox(width: 16),
+              Expanded(child: _StatBlock(label: 'Total Revenue', value: 'PKR ${formatThousands(revenue)}')),
             ],
           ),
         ],
@@ -324,7 +285,7 @@ class _SalesCard extends StatelessWidget {
     );
   }
 
-  const _SalesCard();
+  const _SalesCard({required this.fuelName, required this.litres, required this.revenue});
 }
 
 class _StatBlock extends StatelessWidget {
@@ -337,7 +298,16 @@ class _StatBlock extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(label, style: const TextStyle(fontSize: 11, color: AppColors.secondaryText)),
-        Text(value, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: AppColors.primaryText)),
+        // Shrinks to its half of the card rather than wrapping the figure.
+        FittedBox(
+          fit: BoxFit.scaleDown,
+          alignment: Alignment.centerLeft,
+          child: Text(
+            value,
+            maxLines: 1,
+            style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: AppColors.primaryText),
+          ),
+        ),
       ],
     );
   }
@@ -345,9 +315,15 @@ class _StatBlock extends StatelessWidget {
   const _StatBlock({required this.label, required this.value});
 }
 
+/// How many of the selected grade's nozzles are in each state. Display
+/// only: tapping a chip doesn't filter the list yet.
 class _StatusChips extends StatelessWidget {
+  final List<Nozzle> nozzles;
+
   @override
   Widget build(BuildContext context) {
+    int count(NozzleStatus status) => nozzles.where((n) => n.status == status).length;
+
     Widget chip(String label, {bool active = false, Color? color}) {
       return Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
@@ -371,56 +347,59 @@ class _StatusChips extends StatelessWidget {
       spacing: 8,
       runSpacing: 8,
       children: [
-        chip('All 12', active: true),
-        chip('Dispensing 6', color: AppColors.statusDispensing),
-        chip('Idle 4'),
-        chip('Faults 2', color: AppColors.statusFault),
+        chip('All ${nozzles.length}', active: true),
+        chip('Dispensing ${count(NozzleStatus.dispensing)}', color: AppColors.statusDispensing),
+        chip('Idle ${count(NozzleStatus.idle)}'),
+        chip('Faults ${count(NozzleStatus.fault)}', color: AppColors.statusFault),
       ],
     );
   }
 
-  const _StatusChips();
+  const _StatusChips({required this.nozzles});
 }
 
-enum NozzleStatus { dispensing, idle, fault }
+/// "just now", "5 min ago", "2 h ago" - how long since the pump last
+/// reported this nozzle.
+String _timeAgo(DateTime t) {
+  final elapsed = DateTime.now().difference(t);
+  if (elapsed.inMinutes < 1) return 'just now';
+  if (elapsed.inMinutes < 60) return '${elapsed.inMinutes} min ago';
+  return '${elapsed.inHours} h ago';
+}
 
 class _NozzleCard extends StatelessWidget {
-  final String name;
-  final String grade;
-  final String litres;
-  final String flow;
-  final String lastUpdate;
-  final NozzleStatus status;
+  final Nozzle nozzle;
 
   @override
   Widget build(BuildContext context) {
     final Color statusColor;
     final String statusLabel;
     final Color iconBg;
-    switch (status) {
+    switch (nozzle.status) {
       case NozzleStatus.dispensing:
         statusColor = AppColors.statusDispensing;
         statusLabel = 'Dispensing';
         iconBg = AppColors.redLightSelected;
-        break;
       case NozzleStatus.idle:
         statusColor = AppColors.statusIdle;
         statusLabel = 'Idle';
         iconBg = AppColors.background;
-        break;
       case NozzleStatus.fault:
         statusColor = AppColors.statusFault;
         statusLabel = 'Fault';
-        iconBg = const Color(0xFFFDECEC);
-        break;
+        iconBg = AppColors.statusFault.withValues(alpha: 0.1);
     }
+    final faulty = nozzle.status == NozzleStatus.fault;
 
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: AppColors.cardBackground,
         borderRadius: BorderRadius.circular(14),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 4, offset: const Offset(0, 1))],
+        // A faulty nozzle is outlined in the fault color so it stands out
+        // in the list, not just in its small status label.
+        border: faulty ? Border.all(color: AppColors.statusFault.withValues(alpha: 0.5)) : null,
+        boxShadow: AppDecorations.cardShadow,
       ),
       child: Row(
         children: [
@@ -429,7 +408,11 @@ class _NozzleCard extends StatelessWidget {
             height: 38,
             alignment: Alignment.center,
             decoration: BoxDecoration(color: iconBg, borderRadius: BorderRadius.circular(10)),
-            child: Icon(Icons.local_gas_station_outlined, color: AppColors.brandRed, size: 18),
+            child: Icon(
+              faulty ? Icons.error_outline : Icons.local_gas_station_outlined,
+              color: faulty ? AppColors.statusFault : AppColors.brandRed,
+              size: 18,
+            ),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -437,31 +420,33 @@ class _NozzleCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text(name, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.primaryText)),
-                    Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Container(
-                          width: 6,
-                          height: 6,
-                          decoration: BoxDecoration(color: statusColor, shape: BoxShape.circle),
-                        ),
-                        const SizedBox(width: 4),
-                        Text(statusLabel, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: statusColor)),
-                      ],
+                    Expanded(
+                      child: Text(
+                        nozzle.name,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.primaryText),
+                      ),
                     ),
+                    const SizedBox(width: 8),
+                    Container(
+                      width: 6,
+                      height: 6,
+                      decoration: BoxDecoration(color: statusColor, shape: BoxShape.circle),
+                    ),
+                    const SizedBox(width: 4),
+                    Text(statusLabel, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: statusColor)),
                   ],
                 ),
-                Text(grade, style: const TextStyle(fontSize: 11, color: AppColors.secondaryText)),
+                Text(nozzle.fuelName, style: const TextStyle(fontSize: 11, color: AppColors.secondaryText)),
                 const SizedBox(height: 4),
                 Wrap(
                   spacing: 16,
                   children: [
-                    _MetaText(bold: litres, label: 'Litres'),
-                    _MetaText(bold: flow, label: 'Flow'),
-                    Text(lastUpdate, style: const TextStyle(fontSize: 11, color: AppColors.secondaryText)),
+                    _MetaText(bold: '${nozzle.litres.toStringAsFixed(2)} L', label: 'Litres'),
+                    _MetaText(bold: '${nozzle.flowRate.toStringAsFixed(1)} L/min', label: 'Flow'),
+                    Text(_timeAgo(nozzle.lastUpdated), style: const TextStyle(fontSize: 11, color: AppColors.secondaryText)),
                   ],
                 ),
               ],
@@ -472,14 +457,7 @@ class _NozzleCard extends StatelessWidget {
     );
   }
 
-  const _NozzleCard({
-    required this.name,
-    required this.grade,
-    required this.litres,
-    required this.flow,
-    required this.lastUpdate,
-    required this.status,
-  });
+  const _NozzleCard({required this.nozzle});
 }
 
 class _MetaText extends StatelessWidget {
@@ -488,8 +466,9 @@ class _MetaText extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return RichText(
-      text: TextSpan(
+    // Text.rich, unlike RichText, follows the system text size.
+    return Text.rich(
+      TextSpan(
         style: const TextStyle(fontSize: 11, color: AppColors.secondaryText),
         children: [
           TextSpan(text: '$bold ', style: const TextStyle(fontWeight: FontWeight.w700, color: AppColors.primaryText)),

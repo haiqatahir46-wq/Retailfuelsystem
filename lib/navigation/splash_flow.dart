@@ -16,6 +16,10 @@ class SplashFlow extends StatefulWidget {
 class _SplashFlowState extends State<SplashFlow> {
   Timer? _autoAdvance;
 
+  // Set by the first of the timer and the "Get Started" tap, so a tap that
+  // lands just as the timer fires can't push Login twice.
+  bool _navigated = false;
+
   @override
   void initState() {
     super.initState();
@@ -30,7 +34,8 @@ class _SplashFlowState extends State<SplashFlow> {
 
   void _goToLogin() {
     _autoAdvance?.cancel();
-    if (!mounted) return;
+    if (!mounted || _navigated) return;
+    _navigated = true;
     // pushReplacement, not push: the splash screen should never be
     // reachable again via the back button once we've moved past it.
     Navigator.of(context).pushReplacement(

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../theme/app_colors.dart';
+import '../widgets/station_photo.dart';
 import '../widgets/wave_clipper.dart';
 
 /// First screen shown on app launch: the station photo up top with a fixed
@@ -7,8 +8,8 @@ import '../widgets/wave_clipper.dart';
 /// reference layout (image panel -> wave -> white card + CTA). The wave
 /// shape is static - only the card's entrance (slide + fade) animates.
 ///
-/// Swap [stationImage] for your real photo:
-///   Image.asset('assets/images/station.jpg', fit: BoxFit.cover)
+/// The photo defaults to [StationPhoto] (assets/images/station.webp); pass
+/// [stationImage] only to show a different picture.
 class SplashScreen extends StatefulWidget {
   final VoidCallback onGetStarted;
   final Widget? stationImage;
@@ -80,7 +81,7 @@ class _SplashScreenState extends State<SplashScreen>
                 child: ClipPath(
                   clipper: const WaveClipper(),
                   child: SizedBox.expand(
-                    child: widget.stationImage ?? const _StationPlaceholder(),
+                    child: widget.stationImage ?? const StationPhoto(),
                   ),
                 ),
               ),
@@ -182,31 +183,6 @@ class _GetStartedButton extends StatelessWidget {
         child: const Padding(
           padding: EdgeInsets.all(14),
           child: Icon(Icons.arrow_forward, color: Colors.white, size: 20),
-        ),
-      ),
-    );
-  }
-}
-
-/// Placeholder forecourt scene used until a real station photo is wired in.
-class _StationPlaceholder extends StatelessWidget {
-  const _StationPlaceholder();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [Color(0xFFB0141A), AppColors.brandRed],
-        ),
-      ),
-      child: Center(
-        child: Icon(
-          Icons.local_gas_station,
-          size: 96,
-          color: Colors.white.withOpacity(0.25),
         ),
       ),
     );

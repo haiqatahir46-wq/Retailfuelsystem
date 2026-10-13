@@ -4,8 +4,10 @@ import '../services/google_places_service.dart';
 import '../theme/app_colors.dart';
 
 /// Search screen for picking a station's real-world location, backed by
-/// the Google Places Autocomplete API (see google_places_service.dart for
-/// the API key you need to set up first).
+/// Google Places (New) autocomplete + details (see google_places_service.dart
+/// for the API key you need to pass in first). The one screen that pops
+/// itself: after a successful pick it reports the place through
+/// [onLocationSelected] and closes.
 class LocationSearchScreen extends StatefulWidget {
   final ValueChanged<PlaceDetails> onLocationSelected;
 
@@ -16,6 +18,8 @@ class LocationSearchScreen extends StatefulWidget {
 }
 
 class _LocationSearchScreenState extends State<LocationSearchScreen> {
+  static const _genericError = 'Something went wrong with location search. Please try again.';
+
   final _service = GooglePlacesService();
   final _controller = TextEditingController();
   Timer? _debounce;
@@ -23,10 +27,25 @@ class _LocationSearchScreenState extends State<LocationSearchScreen> {
   bool _loading = false;
   String? _error;
 
+  // One billing session per visit: every autocomplete call and the details
+  // call that ends the search share this token (see newPlacesSessionToken).
+  String _sessionToken = newPlacesSessionToken();
+
+  // Bumped by every search and by a selection. A response whose number is
+  // no longer current is stale (the user kept typing, or already picked a
+  // result) and is dropped, so a slow old reply can't overwrite newer
+  // results.
+  int _requestId = 0;
+
+  // True while a picked suggestion's details are loading, so a double-tap
+  // can't fetch twice and pop two screens.
+  bool _selecting = false;
+
   @override
   void dispose() {
     _debounce?.cancel();
     _controller.dispose();
+    _service.close();
     super.dispose();
   }
 
@@ -35,39 +54,67 @@ class _LocationSearchScreenState extends State<LocationSearchScreen> {
     _debounce = Timer(const Duration(milliseconds: 400), () => _search(value));
   }
 
+  /// [PlacesException] messages are written for the user; anything else is
+  /// an unexpected bug, so it gets a generic line rather than raw text.
+  String _messageFor(Object error) => error is PlacesException ? error.message : _genericError;
+
   Future<void> _search(String value) async {
+    if (_selecting) return;
+    final requestId = ++_requestId;
+    if (value.trim().isEmpty) {
+      setState(() {
+        _results = [];
+        _loading = false;
+        _error = null;
+      });
+      return;
+    }
     setState(() {
       _loading = true;
       _error = null;
     });
     try {
-      final results = await _service.autocomplete(value);
-      if (!mounted) return;
+      final results = await _service.autocomplete(value, sessionToken: _sessionToken);
+      if (!mounted || requestId != _requestId || value != _controller.text) return;
       setState(() {
         _results = results;
         _loading = false;
       });
     } catch (e) {
-      if (!mounted) return;
+      if (!mounted || requestId != _requestId || value != _controller.text) return;
       setState(() {
-        _error = e.toString();
+        _error = _messageFor(e);
         _loading = false;
       });
     }
   }
 
   Future<void> _select(PlacePrediction prediction) async {
-    setState(() => _loading = true);
+    if (_selecting) return;
+    _selecting = true;
+    _debounce?.cancel();
+    _requestId++; // any search still in flight is now stale
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
     try {
-      final details = await _service.getPlaceDetails(prediction.placeId);
+      final details = await _service.getPlaceDetails(prediction.placeId, sessionToken: _sessionToken);
+      if (!mounted) return;
       widget.onLocationSelected(details);
-      if (mounted) Navigator.of(context).pop();
+      if (!mounted) return;
+      Navigator.of(context).pop();
     } catch (e) {
       if (!mounted) return;
       setState(() {
-        _error = e.toString();
+        _error = _messageFor(e);
         _loading = false;
       });
+    } finally {
+      // The details call ends the billing session whether or not it
+      // worked, so any further searching starts a new one.
+      _sessionToken = newPlacesSessionToken();
+      _selecting = false;
     }
   }
 

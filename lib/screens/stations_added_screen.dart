@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/station.dart';
 import '../theme/app_colors.dart';
+import '../widgets/station_photo.dart';
 import '../widgets/wave_clipper.dart';
 
 /// Shown right after signup: confirms the station(s) tied to the new
@@ -9,10 +10,10 @@ import '../widgets/wave_clipper.dart';
 /// not a form).
 class StationsAddedScreen extends StatelessWidget {
   final Widget? stationImage;
-  final List<StationSummary> stations;
+  final List<Station> stations;
   final VoidCallback onContinue;
   final VoidCallback? onAddAnotherStation;
-  final ValueChanged<StationSummary>? onEditStation;
+  final ValueChanged<Station>? onEditStation;
 
   const StationsAddedScreen({
     super.key,
@@ -42,7 +43,7 @@ class StationsAddedScreen extends StatelessWidget {
                 child: ClipPath(
                   clipper: const WaveClipper(),
                   child: SizedBox.expand(
-                    child: stationImage ?? const _StationPlaceholder(),
+                    child: stationImage ?? const StationPhoto(),
                   ),
                 ),
               ),
@@ -65,7 +66,7 @@ class StationsAddedScreen extends StatelessWidget {
                       margin: const EdgeInsets.only(bottom: 18),
                       alignment: Alignment.center,
                       decoration: BoxDecoration(
-                        color: const Color(0xFFE7F6EF),
+                        color: AppColors.statusDispensing.withValues(alpha: 0.12),
                         shape: BoxShape.circle,
                       ),
                       child: const Icon(
@@ -100,59 +101,55 @@ class StationsAddedScreen extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: 10),
-                    ...stations.map(
-                      (s) => Padding(
+                    for (final (i, s) in stations.indexed)
+                      Padding(
                         padding: const EdgeInsets.only(bottom: 12),
                         child: _StationCard(
                           station: s,
+                          isPrimary: i == 0,
                           onEdit: onEditStation == null ? null : () => onEditStation!(s),
                         ),
                       ),
-                    ),
                     if (onAddAnotherStation != null) ...[
                       const SizedBox(height: 2),
-                      SizedBox(
-                        height: 48,
-                        child: OutlinedButton(
-                          onPressed: onAddAnotherStation,
-                          style: OutlinedButton.styleFrom(
-                            foregroundColor: AppColors.secondaryText,
-                            side: const BorderSide(
-                              color: AppColors.borderDivider,
-                              width: 1.5,
-                            ),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(14),
-                            ),
+                      OutlinedButton(
+                        onPressed: onAddAnotherStation,
+                        style: OutlinedButton.styleFrom(
+                          minimumSize: const Size.fromHeight(48),
+                          foregroundColor: AppColors.secondaryText,
+                          side: const BorderSide(
+                            color: AppColors.borderDivider,
+                            width: 1.5,
                           ),
-                          child: const Text(
-                            '+ Add Another Station',
-                            style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
-                          ),
-                        ),
-                      ),
-                    ],
-                    const SizedBox(height: 22),
-                    SizedBox(
-                      height: 52,
-                      child: ElevatedButton(
-                        onPressed: onContinue,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppColors.brandRed,
-                          foregroundColor: Colors.white,
-                          elevation: 6,
-                          shadowColor: AppColors.brandRed.withOpacity(0.4),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(14),
                           ),
                         ),
                         child: const Text(
-                          'Continue to Dashboard',
-                          style: TextStyle(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w700,
-                            letterSpacing: 0.3,
-                          ),
+                          '+ Add Another Station',
+                          style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
+                        ),
+                      ),
+                    ],
+                    const SizedBox(height: 22),
+                    ElevatedButton(
+                      onPressed: onContinue,
+                      style: ElevatedButton.styleFrom(
+                        minimumSize: const Size.fromHeight(52),
+                        backgroundColor: AppColors.brandRed,
+                        foregroundColor: Colors.white,
+                        elevation: 6,
+                        shadowColor: AppColors.brandRed.withValues(alpha: 0.4),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                      ),
+                      child: const Text(
+                        'Continue to Dashboard',
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 0.3,
                         ),
                       ),
                     ),
@@ -168,9 +165,21 @@ class StationsAddedScreen extends StatelessWidget {
 }
 
 class _StationCard extends StatelessWidget {
-  final StationSummary station;
+  final Station station;
+
+  /// The station named on the signup form (the first one).
+  final bool isPrimary;
   final VoidCallback? onEdit;
-  const _StationCard({required this.station, this.onEdit});
+  const _StationCard({required this.station, required this.isPrimary, this.onEdit});
+
+  bool get _pending => station.status == StationStatus.pending;
+
+  /// Pending stations say so; otherwise the location, if one was entered.
+  String get _subtitle {
+    if (_pending) return 'Setup pending';
+    if (station.location.isNotEmpty) return station.location;
+    return isPrimary ? 'Primary station' : 'Active';
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -183,17 +192,20 @@ class _StationCard extends StatelessWidget {
       ),
       child: Row(
         children: [
+          // A pending station (not set up yet) gets a muted icon and an
+          // amber "Setup pending", so it reads differently from the active
+          // ones at a glance.
           Container(
             width: 44,
             height: 44,
             alignment: Alignment.center,
             decoration: BoxDecoration(
-              color: AppColors.redLightSelected,
+              color: _pending ? AppColors.statusAttention.withValues(alpha: 0.12) : AppColors.redLightSelected,
               borderRadius: BorderRadius.circular(12),
             ),
-            child: const Icon(
-              Icons.local_gas_station_outlined,
-              color: AppColors.brandRed,
+            child: Icon(
+              _pending ? Icons.hourglass_empty : Icons.local_gas_station_outlined,
+              color: _pending ? AppColors.statusAttention : AppColors.brandRed,
               size: 20,
             ),
           ),
@@ -214,8 +226,14 @@ class _StationCard extends StatelessWidget {
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  station.subtitle,
-                  style: const TextStyle(fontSize: 12, color: AppColors.secondaryText),
+                  _subtitle,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: _pending ? FontWeight.w600 : FontWeight.w400,
+                    color: _pending ? AppColors.statusAttention : AppColors.secondaryText,
+                  ),
                 ),
               ],
             ),
@@ -233,30 +251,6 @@ class _StationCard extends StatelessWidget {
             ),
           ),
         ],
-      ),
-    );
-  }
-}
-
-class _StationPlaceholder extends StatelessWidget {
-  const _StationPlaceholder();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [Color(0xFFB0141A), AppColors.brandRed],
-        ),
-      ),
-      child: Center(
-        child: Icon(
-          Icons.local_gas_station,
-          size: 56,
-          color: Colors.white.withOpacity(0.25),
-        ),
       ),
     );
   }

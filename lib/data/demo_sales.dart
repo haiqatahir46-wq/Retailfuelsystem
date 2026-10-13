@@ -2,8 +2,6 @@ import '../models/sales.dart';
 
 const demoSalesByStation = <String, StationSalesData>{
   'station-1': StationSalesData(
-    activePumps: '8 / 12',
-    weekTrend: [40, 62, 52, 78, 74, 95, 100],
     today: [
       PeriodSales(label: 'Today', petrolL: 18000, dieselL: 9000, octaneL: 3000),
     ],
@@ -41,8 +39,6 @@ const demoSalesByStation = <String, StationSalesData>{
   // with its own, completely separate figures - proof that the numbers
   // really do change per station rather than being one shared global set.
   'station-2': StationSalesData(
-    activePumps: '5 / 8',
-    weekTrend: [30, 42, 38, 55, 50, 68, 72],
     today: [
       PeriodSales(label: 'Today', petrolL: 9000, dieselL: 4500, octaneL: 1500),
     ],

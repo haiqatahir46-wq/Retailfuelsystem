@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
 import '../screens/signup_screen.dart';
+import '../state/app_session.dart';
+import 'route_guard.dart';
 import 'stations_added_flow.dart';
 
-/// Signup screen, wrapped the same way as LoginFlow. Collects data and
-/// hands it to StationsAddedFlow, which is the widget that actually needs
-/// to own and mutate a stations list.
+/// Signup screen, wrapped the same way as LoginFlow. Create Account creates
+/// the account in the session (AppSession.signUp: the owner plus the
+/// stations implied by the form, each with a fresh id) and moves on to
+/// StationsAddedFlow, which lists those stations from the session.
 class SignupFlow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
@@ -18,13 +21,14 @@ class SignupFlow extends StatelessWidget {
         required stationName,
         required stationCount,
       }) {
+        if (!isTopRoute(context)) return;
+        AppSessionScope.read(context).signUp(
+          usernameOrEmail: usernameOrGmail,
+          stationName: stationName,
+          stationCount: stationCount,
+        );
         Navigator.of(context).push(
-          MaterialPageRoute(
-            builder: (context) => StationsAddedFlow(
-              stationName: stationName,
-              stationCount: stationCount,
-            ),
-          ),
+          MaterialPageRoute(builder: (context) => const StationsAddedFlow()),
         );
       },
     );

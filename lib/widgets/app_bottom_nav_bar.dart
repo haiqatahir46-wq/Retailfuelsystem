@@ -16,6 +16,18 @@ const List<AppBottomNavItem> kAppNavItems = [
   AppBottomNavItem(icon: Icons.receipt_long_outlined, label: 'Logs'),
 ];
 
+/// Each tab's index in [kAppNavItems]. A tab screen passes its own fixed
+/// index to AppBottomNavBar and reports taps to MainTabsFlow, which alone
+/// decides which tab shows - no screen keeps its own copy of "which tab is
+/// selected".
+abstract final class AppTab {
+  static const dashboard = 0;
+  static const nozzles = 1;
+  static const tanks = 2;
+  static const stock = 3;
+  static const logs = 4;
+}
+
 /// Bottom navigation bar matching the PARCO app reference: off-white/white
 /// bar, brand-red active icon+label with a small red dot under it, muted
 /// gray-blue for inactive items.
@@ -35,15 +47,18 @@ class AppBottomNavBar extends StatelessWidget {
       padding: const EdgeInsets.only(top: 8, bottom: 8),
       child: SafeArea(
         top: false,
+        // An equal share of the width per item, so five labels fit on a
+        // narrow phone or with large text instead of overflowing the row.
         child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
           children: List.generate(kAppNavItems.length, (index) {
             final item = kAppNavItems[index];
             final isActive = index == currentIndex;
-            return _NavItem(
-              item: item,
-              isActive: isActive,
-              onTap: () => onTap(index),
+            return Expanded(
+              child: _NavItem(
+                item: item,
+                isActive: isActive,
+                onTap: () => onTap(index),
+              ),
             );
           }),
         ),
@@ -73,18 +88,24 @@ class _NavItem extends StatelessWidget {
         borderRadius: BorderRadius.all(Radius.circular(12)),
       ),
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             Icon(item.icon, color: color, size: 24),
             const SizedBox(height: 4),
-            Text(
-              item.label,
-              style: TextStyle(
-                color: color,
-                fontSize: 12,
-                fontWeight: isActive ? FontWeight.w600 : FontWeight.w500,
+            // One line, shrunk to fit if it must, so a label never wraps
+            // or pushes the bar taller than its neighbours.
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Text(
+                item.label,
+                maxLines: 1,
+                style: TextStyle(
+                  color: color,
+                  fontSize: 12,
+                  fontWeight: isActive ? FontWeight.w600 : FontWeight.w500,
+                ),
               ),
             ),
             const SizedBox(height: 4),

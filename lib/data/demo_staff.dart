@@ -1,7 +1,8 @@
 import '../models/staff.dart';
 
-// Demo seed data - wire to a real staff backend later, the same way
-// demoTankStock/demoPurchaseOrders/demoLogEntries stand in for real data
+// Demo seed data: AppSession.signInDemo starts the demo account's staff
+// list from this. Wire to a real staff backend later, the same way
+// salesFor/purchaseOrdersFor/logsFor/nozzlesFor stand in for real data
 // elsewhere until one exists.
 const demoStaffMembers = [
   StaffMember(id: 's1', name: 'Bilal Ahmed', role: 'Manager', phone: '0300-1234567'),

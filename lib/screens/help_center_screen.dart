@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../theme/app_colors.dart';
+import '../theme/app_decorations.dart';
 
 class HelpTopic {
   final String question;
@@ -7,30 +8,34 @@ class HelpTopic {
   const HelpTopic({required this.question, required this.answer});
 }
 
+/// The built-in FAQ. Each answer describes the app as it is, so check them
+/// whenever a screen they mention changes.
 const kDefaultHelpTopics = [
   HelpTopic(
     question: 'How do I add a new station?',
-    answer: 'Go to Select Station from the bottom navigation, then tap '
-        '"+ Add Station" and fill in the station name, location, nozzles '
-        'and storage capacity.',
+    answer: 'Tap the station name at the top of the Dashboard or the Stock '
+        'tab to open Select Station, then tap "+ Add Station" and fill in '
+        'the station name, location, nozzles and storage capacity.',
   ),
   HelpTopic(
     question: 'How is revenue calculated?',
     answer: 'Revenue = Litres Sold × Price per Litre, for each fuel grade. '
-        'This is computed automatically on the Dashboard and Sales report '
-        'screens - you never need to enter it manually.',
+        'It is worked out automatically on the Dashboard (including its '
+        'Weekly, Monthly and Yearly reports) and on the Nozzles tab - you '
+        'never need to enter it manually.',
   ),
   HelpTopic(
     question: 'Can I switch between stations?',
-    answer: 'Yes - tap the station name at the top of the Dashboard, or use '
-        'Select Station from the navigation, to switch which station\'s '
-        'data you\'re viewing.',
+    answer: 'Yes - tap the station name at the top of the Dashboard or the '
+        'Stock tab, then pick a station from the list. Every tab then shows '
+        'that station\'s data.',
   ),
   HelpTopic(
     question: 'What does the low-stock alert mean?',
-    answer: 'It means a tank\'s theoretical stock has dropped below its '
-        'reorder threshold. Tap the alert on the Dashboard to go to Tanks '
-        'and place a reorder.',
+    answer: 'It means a tank\'s estimated stock has dropped below its '
+        'reorder threshold. Tap the alert on the Dashboard to go to Stock, '
+        'then tap Create Reorder to order more fuel. Set Threshold on the '
+        'same tank changes the level that triggers the alert.',
   ),
 ];
 
@@ -66,44 +71,47 @@ class HelpCenterScreen extends StatelessWidget {
           ),
           const SizedBox(height: 12),
           ...topics.map((t) => _FaqTile(topic: t)),
-          const SizedBox(height: 20),
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: AppColors.cardBackground,
-              borderRadius: BorderRadius.circular(14),
-              boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 4, offset: const Offset(0, 1))],
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'Still need help?',
-                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.primaryText),
-                ),
-                const SizedBox(height: 4),
-                const Text(
-                  'Our support team usually replies within a few hours.',
-                  style: TextStyle(fontSize: 12.5, color: AppColors.secondaryText),
-                ),
-                const SizedBox(height: 12),
-                SizedBox(
-                  height: 46,
-                  width: double.infinity,
-                  child: ElevatedButton.icon(
+          // Only while there is a way to reach support: a button that can't
+          // do anything shouldn't be offered.
+          if (onContactSupport != null) ...[
+            const SizedBox(height: 20),
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: AppColors.cardBackground,
+                borderRadius: BorderRadius.circular(14),
+                boxShadow: AppDecorations.cardShadow,
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Still need help?',
+                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.primaryText),
+                  ),
+                  const SizedBox(height: 4),
+                  const Text(
+                    'Our support team usually replies within a few hours.',
+                    style: TextStyle(fontSize: 12.5, color: AppColors.secondaryText),
+                  ),
+                  const SizedBox(height: 12),
+                  ElevatedButton.icon(
                     onPressed: onContactSupport,
                     icon: const Icon(Icons.mail_outline, size: 18),
                     label: const Text('Contact Support'),
                     style: ElevatedButton.styleFrom(
+                      // A minimum height, not a fixed one, so larger text
+                      // makes the button taller instead of clipping it.
+                      minimumSize: const Size.fromHeight(46),
                       backgroundColor: AppColors.brandRed,
                       foregroundColor: Colors.white,
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                     ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
+          ],
         ],
       ),
     );
@@ -127,7 +135,7 @@ class _FaqTile extends StatelessWidget {
       decoration: BoxDecoration(
         color: AppColors.cardBackground,
         borderRadius: BorderRadius.circular(12),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 4, offset: const Offset(0, 1))],
+        boxShadow: AppDecorations.cardShadow,
       ),
       child: ExpansionTile(
         tilePadding: const EdgeInsets.symmetric(horizontal: 14),

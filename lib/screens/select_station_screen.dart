@@ -2,15 +2,19 @@ import 'package:flutter/material.dart';
 import '../models/station.dart';
 import '../theme/app_colors.dart';
 
-/// Station list/selector. Plain - no photo/wave header. Each row shows the
-/// station name and an edit (pencil) action, not a status pill - the
-/// selected station is filled brand-red, others sit on plain cards.
+/// Station list/selector. Plain - no photo/wave header, just an app bar
+/// with a back arrow ([onBack]) and the search box under it. Each row shows
+/// the station name, its location underneath, and an edit (pencil) action
+/// that changes the location - not a status pill. The selected station is
+/// filled brand-red, others sit on plain cards. The search matches names
+/// and locations.
 class SelectStationScreen extends StatefulWidget {
-  final List<StationListItem> stations;
+  final List<Station> stations;
   final String selectedStationId;
   final ValueChanged<String> onStationSelected;
-  final ValueChanged<StationListItem> onEditStation;
+  final ValueChanged<Station> onEditStation;
   final VoidCallback onAddStation;
+  final VoidCallback? onBack;
 
   @override
   State<SelectStationScreen> createState() => _SelectStationScreenState();
@@ -22,6 +26,7 @@ class SelectStationScreen extends StatefulWidget {
     required this.onStationSelected,
     required this.onEditStation,
     required this.onAddStation,
+    this.onBack,
   });
 }
 
@@ -40,61 +45,60 @@ class _SelectStationScreenState extends State<SelectStationScreen> {
     final visible = query.isEmpty
         ? widget.stations
         : widget.stations
-            .where((s) => s.name.toLowerCase().contains(query))
+            .where((s) => s.name.toLowerCase().contains(query) || s.location.toLowerCase().contains(query))
             .toList();
 
     return Scaffold(
       backgroundColor: AppColors.background,
+      // The app bar keeps the header below the status bar and gives the
+      // screen its way back.
+      appBar: AppBar(
+        backgroundColor: AppColors.cardBackground,
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        foregroundColor: AppColors.primaryText,
+        leading: IconButton(icon: const Icon(Icons.arrow_back), tooltip: 'Back', onPressed: widget.onBack),
+        title: const Text(
+          'Select Station',
+          style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: AppColors.primaryText),
+        ),
+      ),
       body: Column(
         children: [
           Container(
             width: double.infinity,
-            padding: const EdgeInsets.fromLTRB(24, 24, 24, 16),
+            padding: const EdgeInsets.fromLTRB(20, 4, 20, 16),
             decoration: const BoxDecoration(
               color: AppColors.cardBackground,
               border: Border(bottom: BorderSide(color: AppColors.borderDivider)),
             ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'Select Station',
-                  style: TextStyle(
-                    fontSize: 19,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.primaryText,
-                  ),
+            child: TextField(
+              controller: _searchController,
+              onChanged: (_) => setState(() {}),
+              style: const TextStyle(fontSize: 14, color: AppColors.primaryText),
+              decoration: InputDecoration(
+                hintText: 'Select station......',
+                hintStyle: const TextStyle(color: Color(0xFF9AA5B8), fontSize: 14),
+                prefixIcon: const Icon(Icons.search, color: AppColors.secondaryText, size: 20),
+                filled: true,
+                fillColor: AppColors.background,
+                // No fixed height: about 46dp at normal text size, taller
+                // for larger text instead of clipping it.
+                isDense: true,
+                contentPadding: const EdgeInsets.symmetric(vertical: 12.5),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: const BorderSide(color: AppColors.borderDivider),
                 ),
-                const SizedBox(height: 14),
-                SizedBox(
-                  height: 46,
-                  child: TextField(
-                    controller: _searchController,
-                    onChanged: (_) => setState(() {}),
-                    style: const TextStyle(fontSize: 14, color: AppColors.primaryText),
-                    decoration: InputDecoration(
-                      hintText: 'Select station......',
-                      hintStyle: const TextStyle(color: Color(0xFF9AA5B8), fontSize: 14),
-                      prefixIcon: const Icon(Icons.search, color: AppColors.secondaryText, size: 20),
-                      filled: true,
-                      fillColor: AppColors.background,
-                      contentPadding: const EdgeInsets.symmetric(vertical: 0),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: const BorderSide(color: AppColors.borderDivider),
-                      ),
-                      enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: const BorderSide(color: AppColors.borderDivider),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: const BorderSide(color: AppColors.brandRed, width: 1.4),
-                      ),
-                    ),
-                  ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: const BorderSide(color: AppColors.borderDivider),
                 ),
-              ],
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: const BorderSide(color: AppColors.brandRed, width: 1.4),
+                ),
+              ),
             ),
           ),
           Expanded(
@@ -125,19 +129,17 @@ class _SelectStationScreenState extends State<SelectStationScreen> {
             color: AppColors.cardBackground,
             border: Border(top: BorderSide(color: AppColors.borderDivider)),
           ),
-          child: SizedBox(
-            height: 52,
-            child: OutlinedButton(
-              onPressed: widget.onAddStation,
-              style: OutlinedButton.styleFrom(
-                foregroundColor: AppColors.brandRed,
-                side: const BorderSide(color: AppColors.brandRed, width: 1.5, style: BorderStyle.solid),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-              ),
-              child: const Text(
-                '+ Add Station',
-                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
-              ),
+          child: OutlinedButton(
+            onPressed: widget.onAddStation,
+            style: OutlinedButton.styleFrom(
+              minimumSize: const Size.fromHeight(52),
+              foregroundColor: AppColors.brandRed,
+              side: const BorderSide(color: AppColors.brandRed, width: 1.5, style: BorderStyle.solid),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+            ),
+            child: const Text(
+              '+ Add Station',
+              style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
             ),
           ),
         ),
@@ -147,7 +149,7 @@ class _SelectStationScreenState extends State<SelectStationScreen> {
 }
 
 class _StationRow extends StatelessWidget {
-  final StationListItem station;
+  final Station station;
   final bool selected;
   final VoidCallback onTap;
   final VoidCallback onEdit;
@@ -155,9 +157,9 @@ class _StationRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final fg = selected ? Colors.white : AppColors.primaryText;
-    final iconBg = selected ? Colors.white.withOpacity(0.18) : AppColors.redLightSelected;
+    final iconBg = selected ? Colors.white.withValues(alpha: 0.18) : AppColors.redLightSelected;
     final iconColor = selected ? Colors.white : AppColors.brandRed;
-    final actionBg = selected ? Colors.white.withOpacity(0.18) : AppColors.background;
+    final actionBg = selected ? Colors.white.withValues(alpha: 0.18) : AppColors.background;
     final actionColor = selected ? Colors.white : AppColors.secondaryText;
 
     return InkWell(
@@ -191,11 +193,16 @@ class _StationRow extends StatelessWidget {
                     style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: fg),
                   ),
                   const SizedBox(height: 2),
+                  // The location once one is set; until then, what a tap does.
                   Text(
-                    selected ? 'Currently selected' : 'Tap to switch',
+                    station.location.isNotEmpty
+                        ? station.location
+                        : (selected ? 'Currently selected' : 'Tap to switch'),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                     style: TextStyle(
                       fontSize: 12,
-                      color: selected ? Colors.white.withOpacity(0.8) : AppColors.secondaryText,
+                      color: selected ? Colors.white.withValues(alpha: 0.8) : AppColors.secondaryText,
                     ),
                   ),
                 ],

@@ -98,20 +98,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
             style: const TextStyle(fontSize: 13, color: AppColors.secondaryText),
           ),
           const SizedBox(height: 20),
-          SizedBox(
-            height: 48,
-            width: double.infinity,
-            child: ElevatedButton.icon(
-              onPressed: widget.onEditProfile,
-              icon: const Icon(Icons.edit_outlined, size: 18),
-              label: const Text('Edit Profile'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.brandRed,
-                foregroundColor: Colors.white,
-                elevation: 0,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                textStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
-              ),
+          ElevatedButton.icon(
+            onPressed: widget.onEditProfile,
+            icon: const Icon(Icons.edit_outlined, size: 18),
+            label: const Text('Edit Profile'),
+            style: ElevatedButton.styleFrom(
+              minimumSize: const Size.fromHeight(48),
+              backgroundColor: AppColors.brandRed,
+              foregroundColor: Colors.white,
+              elevation: 0,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+              textStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
             ),
           ),
           const SizedBox(height: 24),
@@ -131,19 +128,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
             onTap: widget.onHelpSupportTap,
           ),
           const SizedBox(height: 28),
-          SizedBox(
-            height: 48,
-            width: double.infinity,
-            child: OutlinedButton.icon(
-              onPressed: widget.onLogout,
-              icon: const Icon(Icons.logout, size: 18),
-              label: const Text('Log Out'),
-              style: OutlinedButton.styleFrom(
-                foregroundColor: AppColors.statusFault,
-                side: const BorderSide(color: AppColors.statusFault, width: 1.5),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                textStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
-              ),
+          OutlinedButton.icon(
+            onPressed: widget.onLogout,
+            icon: const Icon(Icons.logout, size: 18),
+            label: const Text('Log Out'),
+            style: OutlinedButton.styleFrom(
+              minimumSize: const Size.fromHeight(48),
+              foregroundColor: AppColors.statusFault,
+              side: const BorderSide(color: AppColors.statusFault, width: 1.5),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+              textStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
             ),
           ),
         ],

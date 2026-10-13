@@ -1,11 +1,11 @@
 {
-    "name": "petrolpump_flutter",
-    "short_name": "petrolpump_flutter",
+    "name": "PARCO Fuel System",
+    "short_name": "PARCO Fuel System",
     "start_url": ".",
     "display": "standalone",
-    "background_color": "#0175C2",
-    "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "background_color": "#F6F8FB",
+    "theme_color": "#D71920",
+    "description": "PARCO Fuel System - retail fuel station management.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

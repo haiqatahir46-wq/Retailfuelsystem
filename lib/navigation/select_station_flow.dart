@@ -1,83 +1,44 @@
 import 'package:flutter/material.dart';
-import '../models/station.dart';
-import '../screens/add_station_screen.dart';
 import '../screens/location_search_screen.dart';
 import '../screens/select_station_screen.dart';
+import '../state/app_session.dart';
+import 'add_station_route.dart';
+import 'route_guard.dart';
 
 /// Station switcher, with its own "+ Add Station" drill-down and an
-/// "edit" action that opens the real Google Places location search -
-/// LocationSearchScreen existed in the codebase but had nothing calling
-/// it until this was wired up. Stateful: owns the stations list itself,
-/// same reasoning as StaffFlow.
-///
-/// TODO: switching the selected station here only updates this flow's own
-/// local state - it doesn't change which station's data Dashboard/Stock/
-/// Logs show, since there's no app-wide "current station" state store yet
-/// (would need something like Provider/Riverpod). Wire that up before
-/// relying on this for real multi-station switching.
-class SelectStationFlow extends StatefulWidget {
-  final String stationId;
-  final String stationName;
-
-  @override
-  State<SelectStationFlow> createState() => _SelectStationFlowState();
-
-  const SelectStationFlow({super.key, required this.stationId, required this.stationName});
-}
-
-class _SelectStationFlowState extends State<SelectStationFlow> {
-  late List<StationListItem> _stations = [StationListItem(id: widget.stationId, name: widget.stationName)];
-  late String _selectedId = widget.stationId;
-
+/// "edit" action that opens the Google Places location search. The
+/// stations and the current one live in the session, so picking a station
+/// here switches what every main tab shows, and a station added or edited
+/// here is still there the next time this opens.
+class SelectStationFlow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
+    final session = AppSessionScope.of(context);
     return SelectStationScreen(
-      stations: _stations,
-      selectedStationId: _selectedId,
+      stations: session.stations,
+      selectedStationId: session.currentStationId ?? '',
+      onBack: () => Navigator.of(context).pop(),
       onStationSelected: (id) {
-        setState(() => _selectedId = id);
+        // Guarded like a push: a double tap must not pop the main tabs too.
+        if (!isTopRoute(context)) return;
+        session.selectStation(id);
         Navigator.of(context).pop();
       },
       onEditStation: (station) {
+        if (!isTopRoute(context)) return;
         Navigator.of(context).push(
           MaterialPageRoute(
+            // The search closes itself after a pick. Only the location
+            // changes; the station keeps the name the owner gave it.
             builder: (context) => LocationSearchScreen(
-              onLocationSelected: (details) {
-                setState(() {
-                  _stations = [
-                    for (final s in _stations)
-                      if (s.id == station.id) StationListItem(id: s.id, name: details.formattedAddress) else s,
-                  ];
-                });
-              },
+              onLocationSelected: (details) => session.updateStationLocation(station.id, details.formattedAddress),
             ),
           ),
         );
       },
-      onAddStation: () {
-        Navigator.of(context).push(
-          MaterialPageRoute(
-            builder: (context) => AddStationScreen(
-              onBack: () => Navigator.of(context).pop(),
-              onAddStation: ({
-                required name,
-                required location,
-                required petrolNozzles,
-                required dieselNozzles,
-                required hiOctaneNozzles,
-                required petrolCapacityL,
-                required dieselCapacityL,
-                required hiOctaneCapacityL,
-              }) {
-                setState(() {
-                  _stations = [..._stations, StationListItem(id: 'station-${_stations.length + 1}', name: name)];
-                });
-                Navigator.of(context).pop();
-              },
-            ),
-          ),
-        );
-      },
+      onAddStation: () => openAddStation(context),
     );
   }
+
+  const SelectStationFlow({super.key});
 }

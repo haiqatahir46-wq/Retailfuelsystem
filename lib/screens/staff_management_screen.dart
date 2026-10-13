@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/staff.dart';
 import '../theme/app_colors.dart';
+import '../theme/app_decorations.dart';
 
 /// Opened from the "Staff Management" row on ProfileScreen - the staff
 /// headcount that used to sit in Profile's quick-stats row now has its own
@@ -68,20 +69,17 @@ class StaffManagementScreen extends StatelessWidget {
             top: false,
             child: Padding(
               padding: const EdgeInsets.fromLTRB(20, 4, 20, 16),
-              child: SizedBox(
-                height: 50,
-                width: double.infinity,
-                child: OutlinedButton(
-                  onPressed: onAddStaff,
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: AppColors.brandRed,
-                    side: const BorderSide(color: AppColors.brandRed, width: 1.5),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                  ),
-                  child: const Text(
-                    '+ Add Staff',
-                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
-                  ),
+              child: OutlinedButton(
+                onPressed: onAddStaff,
+                style: OutlinedButton.styleFrom(
+                  minimumSize: const Size.fromHeight(50),
+                  foregroundColor: AppColors.brandRed,
+                  side: const BorderSide(color: AppColors.brandRed, width: 1.5),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                ),
+                child: const Text(
+                  '+ Add Staff',
+                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
                 ),
               ),
             ),
@@ -117,7 +115,7 @@ class _StaffCard extends StatelessWidget {
         decoration: BoxDecoration(
           color: AppColors.cardBackground,
           borderRadius: BorderRadius.circular(14),
-          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 4, offset: const Offset(0, 1))],
+          boxShadow: AppDecorations.cardShadow,
         ),
         child: Row(
           children: [
@@ -154,7 +152,7 @@ class _StaffCard extends StatelessWidget {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
               decoration: BoxDecoration(
-                color: isActive ? AppColors.statusDispensing.withOpacity(0.12) : AppColors.statusAttention.withOpacity(0.12),
+                color: isActive ? AppColors.statusDispensing.withValues(alpha: 0.12) : AppColors.statusAttention.withValues(alpha: 0.12),
                 borderRadius: BorderRadius.circular(20),
               ),
               child: Text(
