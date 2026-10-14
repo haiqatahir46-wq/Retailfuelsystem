@@ -137,8 +137,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                   ),
                                 ),
                               ),
-                              // The dropdown sits directly under the photo:
-                              // picking a period swaps the content below,
+                              // The dropdown heads the content it controls
+                              // (under the photo and the station row):
+                              // picking a period swaps everything below,
                               // it isn't decorative.
                               PeriodDropdown(
                                 period: _period,
@@ -182,38 +183,38 @@ class _DashboardScreenState extends State<DashboardScreen> {
         ...widget.tanks.where((t) => t.health == health),
     ];
 
+    // "PKR" goes in the caption, not the figure: "1,512,000" alone keeps a
+    // readable size in a third of the width, where "PKR 1,512,000" shrank
+    // smaller than its own caption.
+    final revenue = _StatCard(
+      icon: Icons.swap_vert,
+      value: formatThousands(today.totalRevenue),
+      label: 'Revenue Today (PKR)',
+    );
+    final litres = _StatCard(
+      icon: Icons.local_gas_station_outlined,
+      value: '${formatThousands(today.totalLitres)} L',
+      label: 'Litres Dispensed',
+    );
+    final active = _StatCard(
+      icon: Icons.access_time,
+      value: '$dispensing / ${nozzles.length}',
+      label: 'Active Nozzles',
+    );
+
     return [
-      // IntrinsicHeight + stretch: the three cards stay one height even
-      // when one label wraps to a second line.
-      IntrinsicHeight(
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Expanded(
-              child: _StatCard(
-                icon: Icons.swap_vert,
-                value: 'PKR ${formatThousands(today.totalRevenue)}',
-                label: 'Revenue Today',
-              ),
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: _StatCard(
-                icon: Icons.local_gas_station_outlined,
-                value: '${formatThousands(today.totalLitres)} L',
-                label: 'Litres Dispensed',
-              ),
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: _StatCard(
-                icon: Icons.access_time,
-                value: '$dispensing / ${nozzles.length}',
-                label: 'Active Nozzles',
-              ),
-            ),
-          ],
-        ),
+      // Three cards side by side. Below about 360dp of screen (320 inside
+      // the page padding) a third is too narrow: the figures would shrink
+      // smaller than their captions, so Revenue Today takes a row of its
+      // own and the other two share the next.
+      LayoutBuilder(
+        builder: (context, constraints) {
+          if (constraints.maxWidth >= 320) return _StatRow(cards: [revenue, litres, active]);
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [revenue, const SizedBox(height: 10), _StatRow(cards: [litres, active])],
+          );
+        },
       ),
       if (lowTanks.isNotEmpty) ...[
         const SizedBox(height: 14),
@@ -221,7 +222,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         _LowStockBanner(tanks: lowTanks, onTap: () => widget.onNavTap(AppTab.stock)),
       ],
       const SizedBox(height: 14),
-      _SalesTrendChart(rows: salesFor(widget.stationId, SalesReportPeriod.weekly)),
+      SalesTrendChart(rows: salesFor(widget.stationId, SalesReportPeriod.weekly)),
       const SizedBox(height: 20),
       const Text(
         'Fuel Breakdown',
@@ -268,6 +269,29 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 }
 
+/// Stat cards sharing a row equally. IntrinsicHeight + stretch: they stay
+/// one height even when one caption wraps to a second line.
+class _StatRow extends StatelessWidget {
+  final List<Widget> cards;
+
+  const _StatRow({required this.cards});
+
+  @override
+  Widget build(BuildContext context) {
+    return IntrinsicHeight(
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          for (final (i, card) in cards.indexed) ...[
+            if (i > 0) const SizedBox(width: 10),
+            Expanded(child: card),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
 class _StatCard extends StatelessWidget {
   final IconData icon;
   final String value;
@@ -295,7 +319,7 @@ class _StatCard extends StatelessWidget {
             decoration: BoxDecoration(color: AppColors.redLightSelected, borderRadius: BorderRadius.circular(8)),
             child: Icon(icon, size: 15, color: AppColors.brandRed),
           ),
-          // A third of a phone's width is tight for "PKR 1,512,000", so the
+          // A third of a phone's width is tight for "1,512,000", so the
           // figure shrinks to fit rather than wrapping or overflowing.
           FittedBox(
             fit: BoxFit.scaleDown,
@@ -378,10 +402,16 @@ class _LowStockBanner extends StatelessWidget {
 /// Built straight from the station's weekly sales rows (one point per row,
 /// its totalRevenue), so the line, the change badge and the axis labels
 /// always match the Weekly report rather than a separately typed series.
-class _SalesTrendChart extends StatelessWidget {
+/// The rows run oldest -> newest (see StationSalesData), so the last point
+/// is today: it gets the end dot, it equals "Revenue Today" above it, and
+/// the badge is the change from the first day to today.
+///
+/// Public only so tests can pump it with rows of their own (one row, a
+/// first day of 0, none at all); the Dashboard is its one real user.
+class SalesTrendChart extends StatelessWidget {
   final List<PeriodSales> rows;
 
-  const _SalesTrendChart({required this.rows});
+  const SalesTrendChart({super.key, required this.rows});
 
   @override
   Widget build(BuildContext context) {
@@ -423,15 +453,31 @@ class _SalesTrendChart extends StatelessWidget {
               ),
             )
           else
-            SizedBox(height: 140, child: LineChart(_chartData(values))),
+            SizedBox(
+              height: 140,
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  final left = compactLeftTitles(context, values.reduce((a, b) => a > b ? a : b));
+                  // Skips every other day's label when they wouldn't fit
+                  // side by side (a narrow phone with large text).
+                  final stride = axisLabelStride(
+                    context,
+                    labels: [for (final r in rows) chartAxisLabel(r.label)],
+                    width: constraints.maxWidth - left.sideTitles.reservedSize,
+                  );
+                  return LineChart(_chartData(values, left, stride));
+                },
+              ),
+            ),
         ],
       ),
     );
   }
 
-  /// "▲ 12.4%" (green) or "▼ 3.1%" (red): the change from the first point to
-  /// the last. Null - so nothing is shown - when there aren't two points to
-  /// compare or the first is 0 (no meaningful percentage).
+  /// "▲ 12.4%" (green) or "▼ 3.1%" (red): the change from the first
+  /// (oldest) point to the last (today). Null - so nothing is shown - when
+  /// there aren't two points to compare or the first is 0 (no meaningful
+  /// percentage).
   Widget? _changeBadge(List<double> values) {
     if (values.length < 2 || values.first == 0) return null;
     final change = (values.last - values.first) / values.first * 100;
@@ -446,7 +492,7 @@ class _SalesTrendChart extends StatelessWidget {
     );
   }
 
-  LineChartData _chartData(List<double> values) {
+  LineChartData _chartData(List<double> values, AxisTitles leftTitles, int stride) {
     final spots = [
       for (var i = 0; i < values.length; i++) FlSpot(i.toDouble(), values[i]),
     ];
@@ -468,7 +514,7 @@ class _SalesTrendChart extends StatelessWidget {
         getDrawingHorizontalLine: (_) => FlLine(color: AppColors.borderDivider, strokeWidth: 1),
       ),
       titlesData: FlTitlesData(
-        leftTitles: compactLeftTitles(axis.step),
+        leftTitles: leftTitles,
         rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
         topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
         bottomTitles: AxisTitles(
@@ -477,13 +523,17 @@ class _SalesTrendChart extends StatelessWidget {
             interval: 1,
             reservedSize: 22,
             getTitlesWidget: (value, meta) {
-              // Only whole x values are data points; skip the padding edges.
+              // Only whole x values are data points; skip the padding edges,
+              // and every day [stride] leaves out (counting back from today,
+              // which is always labelled).
               final i = value.round();
               if (value != i || i < 0 || i >= rows.length) return const SizedBox.shrink();
+              if ((rows.length - 1 - i) % stride != 0) return const SizedBox.shrink();
               return Padding(
                 padding: const EdgeInsets.only(top: 6),
                 child: Text(
                   chartAxisLabel(rows[i].label),
+                  maxLines: 1,
                   style: const TextStyle(fontSize: 10, color: AppColors.secondaryText),
                 ),
               );
@@ -516,6 +566,7 @@ class _SalesTrendChart extends StatelessWidget {
           preventCurveOverShooting: true,
           color: AppColors.brandRed,
           barWidth: 3,
+          // One dot, on the newest point (today).
           dotData: FlDotData(
             show: true,
             getDotPainter: (spot, percent, bar, index) => FlDotCirclePainter(

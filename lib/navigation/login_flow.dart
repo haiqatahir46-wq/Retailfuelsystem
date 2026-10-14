@@ -40,7 +40,11 @@ class LoginFlow extends StatelessWidget {
 
 /// Every Log Out button ends here: forgets the session, then returns to
 /// Login with nothing behind it, so back can't reopen a signed-out screen.
+/// Any SnackBar still showing goes too: it belongs to the old session (the
+/// app-wide ScaffoldMessenger would otherwise carry "Petrol threshold
+/// set..." onto Login).
 void logOut(BuildContext context) {
+  ScaffoldMessenger.maybeOf(context)?.clearSnackBars();
   AppSessionScope.read(context).signOut();
   Navigator.of(context).pushAndRemoveUntil(
     MaterialPageRoute(builder: (context) => const LoginFlow()),

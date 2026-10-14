@@ -2,11 +2,13 @@ import 'package:flutter/material.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_decorations.dart';
 
-/// Opened from the drawer/Profile "Settings" entry. Kept small and
-/// honest about what the app can actually do right now - a notifications
-/// toggle (held in local state; wire to real push-notification
-/// preferences once a backend exists) and Log Out, rather than switches
-/// for features (like a dark theme) that don't exist elsewhere in the app.
+/// Opened from the drawer's "Settings" entry (on Dashboard and Stock). Kept
+/// small and honest about what the app can actually do right now - two
+/// notification toggles, "Low-stock alerts" and "Daily sales summary"
+/// (held in local state; wire them to real push-notification preferences
+/// once a backend exists), the app version and Log Out, rather than
+/// switches for features (like a dark theme) that don't exist elsewhere in
+/// the app.
 class SettingsScreen extends StatefulWidget {
   final String appVersion;
   final VoidCallback? onBack;
@@ -35,7 +37,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
         backgroundColor: AppColors.cardBackground,
         elevation: 0,
         foregroundColor: AppColors.primaryText,
-        leading: IconButton(icon: const Icon(Icons.arrow_back), onPressed: widget.onBack),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          tooltip: MaterialLocalizations.of(context).backButtonTooltip,
+          onPressed: widget.onBack,
+        ),
         title: const Text(
           'Settings',
           style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: AppColors.primaryText),

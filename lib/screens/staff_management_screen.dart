@@ -25,7 +25,11 @@ class StaffManagementScreen extends StatelessWidget {
           'Staff Management',
           style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: AppColors.primaryText),
         ),
-        leading: IconButton(icon: const Icon(Icons.arrow_back), onPressed: onBack),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          tooltip: MaterialLocalizations.of(context).backButtonTooltip,
+          onPressed: onBack,
+        ),
         bottom: const PreferredSize(
           preferredSize: Size.fromHeight(1),
           child: Divider(height: 1, color: AppColors.borderDivider),

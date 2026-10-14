@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:petrolpump_flutter/navigation/main_tabs_flow.dart';
+import 'package:petrolpump_flutter/screens/create_reorder_screen.dart';
+import 'package:petrolpump_flutter/screens/help_center_screen.dart';
+import 'package:petrolpump_flutter/screens/threshold_screen.dart';
 import 'package:petrolpump_flutter/state/app_session.dart';
 
 /// Pumps the main tabs on a [width] x [height] phone with the system text
@@ -69,6 +72,48 @@ Future<void> _visitEverything(WidgetTester tester) async {
   }
 }
 
+/// Scrolls the screen's list to the end, so every card has been laid out,
+/// checking for overflow on the way.
+Future<void> _scrollThrough(WidgetTester tester, String where) async {
+  for (var i = 0; i < 6; i++) {
+    await tester.drag(find.byType(Scrollable).first, const Offset(0, -300));
+    await tester.pumpAndSettle();
+    _expectNoOverflow(tester, where);
+  }
+}
+
+/// Opens the drill-downs pushed from the tabs (Threshold, Create Reorder
+/// from it, and Help Center with every answer open), checking each for
+/// overflow.
+Future<void> _visitDrillDowns(WidgetTester tester) async {
+  await _goToTab(tester, 'Stock');
+  await tester.tap(find.text('Set Threshold').first);
+  await tester.pumpAndSettle();
+  expect(find.byType(ThresholdScreen), findsOneWidget);
+  _expectNoOverflow(tester, 'Threshold');
+  await tester.tap(find.text('Reorder').first);
+  await tester.pumpAndSettle();
+  expect(find.byType(CreateReorderScreen), findsOneWidget);
+  await _scrollThrough(tester, 'Create Reorder');
+  await tester.tap(find.byIcon(Icons.arrow_back));
+  await tester.pumpAndSettle();
+  await _scrollThrough(tester, 'Threshold');
+  await tester.tap(find.byIcon(Icons.arrow_back));
+  await tester.pumpAndSettle();
+
+  await _goToTab(tester, 'Dashboard');
+  await tester.tap(find.byTooltip('Help Center'));
+  await tester.pumpAndSettle();
+  expect(find.byType(HelpCenterScreen), findsOneWidget);
+  for (final topic in kDefaultHelpTopics) {
+    await tester.scrollUntilVisible(find.text(topic.question), 100, scrollable: find.byType(Scrollable).first);
+    await tester.tap(find.text(topic.question));
+    await tester.pumpAndSettle();
+    _expectNoOverflow(tester, 'Help Center: ${topic.question}');
+  }
+  await _scrollThrough(tester, 'Help Center');
+}
+
 void main() {
   testWidgets('no overflow at 360 x 800, normal text', (tester) async {
     await _pumpTabs(tester);
@@ -88,6 +133,25 @@ void main() {
   testWidgets('no overflow at 320 x 800, text at 130%', (tester) async {
     await _pumpTabs(tester, width: 320, textScale: 1.3);
     await _visitEverything(tester);
+  });
+
+  testWidgets('no overflow on Threshold, Create Reorder and Help Center at 320 x 800, text at 130%', (tester) async {
+    await _pumpTabs(tester, width: 320, textScale: 1.3);
+    await _visitDrillDowns(tester);
+  });
+
+  testWidgets('below 360dp Revenue Today gets a row of its own, its figure no smaller than its caption', (tester) async {
+    for (final textScale in [1.0, 1.3]) {
+      await _pumpTabs(tester, width: 320, textScale: textScale);
+      final figure = find.text('1,512,000');
+      final caption = find.text('Revenue Today (PKR)');
+      // Alone on its row: the next card starts below it, not beside it.
+      expect(tester.getTopLeft(find.text('Litres Dispensed')).dy, greaterThan(tester.getBottomLeft(caption).dy));
+      // The figure (16pt) may shrink to fit, but never below the caption's
+      // 11pt: drawn width over laid-out width is its scale.
+      final scale = tester.getRect(figure).width / tester.getSize(figure).width;
+      expect(16 * scale, greaterThanOrEqualTo(11), reason: 'text at $textScale');
+    }
   });
 
   testWidgets('a very long station name is cut short, not overflowing', (tester) async {

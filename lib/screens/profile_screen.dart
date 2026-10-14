@@ -2,14 +2,18 @@ import 'package:flutter/material.dart';
 import '../theme/app_colors.dart';
 import '../widgets/app_bottom_nav_bar.dart';
 
-/// Station profile screen - opened from the Profile icon in the
-/// Dashboard's top bar. Matches the Figma reference (avatar + stat row,
+/// Station profile screen - opened from the profile avatar at the top of
+/// the Dashboard and Nozzles tabs, or the drawer's Profile entry. Matches the Figma reference (avatar + stat row,
 /// owner name/address, Edit Profile, Account Details/Staff Management/
 /// Help & Support, Log Out) with ONE deliberate change: the "Staff" stat
 /// is dropped from the quick stats row - staff headcount doesn't belong
 /// as a summary number here, it gets its own full screen instead (see
 /// StaffManagementScreen).
-class ProfileScreen extends StatefulWidget {
+///
+/// Its bottom nav shows [navIndex], the tab Profile was opened from, and
+/// reports a tap through [onNavTap] (ProfileFlow pops back to that tab), so
+/// it keeps no selected tab of its own (see AppTab).
+class ProfileScreen extends StatelessWidget {
   final String stationName;
   final String ownerName;
   final String address;
@@ -24,9 +28,6 @@ class ProfileScreen extends StatefulWidget {
   final VoidCallback? onStaffManagementTap;
   final VoidCallback? onHelpSupportTap;
   final VoidCallback? onLogout;
-
-  @override
-  State<ProfileScreen> createState() => _ProfileScreenState();
 
   const ProfileScreen({
     super.key,
@@ -45,10 +46,6 @@ class ProfileScreen extends StatefulWidget {
     this.onHelpSupportTap,
     this.onLogout,
   });
-}
-
-class _ProfileScreenState extends State<ProfileScreen> {
-  late int _navIndex = widget.navIndex;
 
   @override
   Widget build(BuildContext context) {
@@ -59,10 +56,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
         elevation: 0,
         foregroundColor: AppColors.primaryText,
         title: Text(
-          widget.stationName,
+          stationName,
           style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: AppColors.primaryText),
         ),
-        leading: IconButton(icon: const Icon(Icons.arrow_back), onPressed: widget.onBack),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          tooltip: MaterialLocalizations.of(context).backButtonTooltip,
+          onPressed: onBack,
+        ),
         bottom: const PreferredSize(
           preferredSize: Size.fromHeight(1),
           child: Divider(height: 1, color: AppColors.borderDivider),
@@ -79,27 +80,27 @@ class _ProfileScreenState extends State<ProfileScreen> {
               CircleAvatar(
                 radius: 32,
                 backgroundColor: AppColors.redLightSelected,
-                child: widget.profileImage ?? const Icon(Icons.person, size: 32, color: AppColors.brandRed),
+                child: profileImage ?? const Icon(Icons.person, size: 32, color: AppColors.brandRed),
               ),
               const SizedBox(width: 24),
-              _ProfileStat(value: '${widget.nozzleCount}', label: 'Nozzles'),
+              _ProfileStat(value: '$nozzleCount', label: 'Nozzles'),
               const SizedBox(width: 32),
-              _ProfileStat(value: '${widget.yearsActive}', label: 'Years'),
+              _ProfileStat(value: '$yearsActive', label: 'Years'),
             ],
           ),
           const SizedBox(height: 20),
           Text(
-            widget.ownerName,
+            ownerName,
             style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: AppColors.primaryText),
           ),
           const SizedBox(height: 4),
           Text(
-            widget.address,
+            address,
             style: const TextStyle(fontSize: 13, color: AppColors.secondaryText),
           ),
           const SizedBox(height: 20),
           ElevatedButton.icon(
-            onPressed: widget.onEditProfile,
+            onPressed: onEditProfile,
             icon: const Icon(Icons.edit_outlined, size: 18),
             label: const Text('Edit Profile'),
             style: ElevatedButton.styleFrom(
@@ -115,21 +116,21 @@ class _ProfileScreenState extends State<ProfileScreen> {
           _ProfileListRow(
             icon: Icons.badge_outlined,
             label: 'Account Details',
-            onTap: widget.onAccountDetailsTap,
+            onTap: onAccountDetailsTap,
           ),
           _ProfileListRow(
             icon: Icons.groups_outlined,
             label: 'Staff Management',
-            onTap: widget.onStaffManagementTap,
+            onTap: onStaffManagementTap,
           ),
           _ProfileListRow(
             icon: Icons.help_outline,
             label: 'Help & Support',
-            onTap: widget.onHelpSupportTap,
+            onTap: onHelpSupportTap,
           ),
           const SizedBox(height: 28),
           OutlinedButton.icon(
-            onPressed: widget.onLogout,
+            onPressed: onLogout,
             icon: const Icon(Icons.logout, size: 18),
             label: const Text('Log Out'),
             style: OutlinedButton.styleFrom(
@@ -142,13 +143,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ),
         ],
       ),
-      bottomNavigationBar: AppBottomNavBar(
-        currentIndex: _navIndex,
-        onTap: (i) {
-          setState(() => _navIndex = i);
-          widget.onNavTap?.call(i);
-        },
-      ),
+      bottomNavigationBar: AppBottomNavBar(currentIndex: navIndex, onTap: (i) => onNavTap?.call(i)),
     );
   }
 }

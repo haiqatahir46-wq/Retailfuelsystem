@@ -152,7 +152,8 @@ class ProfileAvatarButton extends StatelessWidget {
 /// it is tappable ([onTap]) and opens the station switcher (Select
 /// Station); the chevron is shown only then, so on Nozzles, where it is a
 /// plain label, it doesn't look tappable. A long name is cut short with an
-/// ellipsis instead of overflowing.
+/// ellipsis instead of overflowing. A tappable row is at least 48dp tall
+/// (the recommended minimum tap height), the name centred in it.
 class StationRow extends StatelessWidget {
   final String stationName;
   final VoidCallback? onTap;
@@ -164,25 +165,28 @@ class StationRow extends StatelessWidget {
       color: AppColors.cardBackground,
       child: InkWell(
         onTap: onTap,
-        child: Padding(
-          padding: padding,
-          child: Row(
-            children: [
-              const Icon(Icons.location_on_outlined, color: AppColors.brandRed, size: 16),
-              const SizedBox(width: 6),
-              Flexible(
-                child: Text(
-                  stationName,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.primaryText),
+        child: ConstrainedBox(
+          constraints: BoxConstraints(minHeight: onTap == null ? 0 : 48),
+          child: Padding(
+            padding: padding,
+            child: Row(
+              children: [
+                const Icon(Icons.location_on_outlined, color: AppColors.brandRed, size: 16),
+                const SizedBox(width: 6),
+                Flexible(
+                  child: Text(
+                    stationName,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.primaryText),
+                  ),
                 ),
-              ),
-              if (onTap != null) ...[
-                const SizedBox(width: 4),
-                const Icon(Icons.keyboard_arrow_down, color: AppColors.secondaryText, size: 16),
+                if (onTap != null) ...[
+                  const SizedBox(width: 4),
+                  const Icon(Icons.keyboard_arrow_down, color: AppColors.secondaryText, size: 16),
+                ],
               ],
-            ],
+            ),
           ),
         ),
       ),

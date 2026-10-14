@@ -137,20 +137,27 @@ class _MainTabsFlowState extends State<MainTabsFlow> {
       MaterialPageRoute(
         builder: (context) {
           final session = AppSessionScope.of(context);
+          final tanks = session.tanksFor(stationId);
           return CreateReorderScreen(
             stationName: session.stationById(stationId)?.name ?? '',
-            tanks: session.tanksFor(stationId),
+            tanks: tanks,
+            // What's already on order shrinks each tank's limit, so the form
+            // allows exactly what placeReorder will accept.
+            pendingLitres: {for (final t in tanks) t.id: session.pendingLitresFor(t.id)},
             onBack: () => Navigator.of(context).pop(),
             // Stays open, so more tanks can be reordered; the order is at
             // the top of Stock's Recent Purchased Orders.
             onSubmitReorder: (tank, litres) {
               final order = session.placeReorder(stationId: stationId, tank: tank, litres: litres);
-              if (order != null) {
-                _showSnackBar(
-                  context,
-                  '${order.poNumber} placed: ${formatThousands(order.litres)} L of ${order.fuelName}',
-                );
-              }
+              _showSnackBar(
+                context,
+                order != null
+                    ? '${order.poNumber} placed: ${formatThousands(order.litres)} L of ${order.fuelName}'
+                    // The form checks the same limit, so this only happens
+                    // if the tank changed under it; say so rather than
+                    // emptying the field in silence.
+                    : 'Order not placed: the ${tank.fuelName} tank has no room for ${formatThousands(litres)} L',
+              );
             },
           );
         },
@@ -199,6 +206,7 @@ class _MainTabsFlowState extends State<MainTabsFlow> {
         stationName: station.name,
         nozzles: nozzles,
         onNavTap: _goToTab,
+        onProfileTap: _openProfile,
       ),
       _TanksTab(
         key: ValueKey('tanks-$id'),

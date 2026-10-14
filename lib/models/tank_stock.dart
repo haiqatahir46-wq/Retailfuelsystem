@@ -60,6 +60,17 @@ class TankStock {
     return TankHealth.critical;
   }
 
+  /// Litres the tank can still take right now: capacity minus current
+  /// volume, never below 0.
+  double get spaceLeft => (capacity - currentVolume).clamp(0.0, double.infinity);
+
+  /// Litres that may still be ordered for this tank when [pendingLitres]
+  /// are already on order and not yet delivered: [spaceLeft] minus them,
+  /// never below 0. The one rule behind both Create Reorder's limit and
+  /// AppSession.placeReorder, so the form and the session can't disagree
+  /// about how much fits.
+  double roomToOrder(double pendingLitres) => (spaceLeft - pendingLitres).clamp(0.0, double.infinity);
+
   TankStock copyWith({
     String? id,
     String? fuelName,
@@ -81,9 +92,19 @@ class TankStock {
 /// received into the tank.
 enum PurchaseOrderStatus { pending, delivered }
 
+/// One order of fuel for one tank.
 class PurchaseOrder {
+  /// E.g. 'PO-2026-0064' (see nextPoNumber in lib/state/ids.dart).
   final String poNumber;
   final DateTime date;
+
+  /// The tank the fuel goes into (TankStock.id / TankConfig.id). A pending
+  /// order counts against THIS tank's room (AppSession.pendingLitresFor),
+  /// so two tanks of the same grade never share each other's orders.
+  final String tankId;
+
+  /// The grade, for display ("Petrol · 20,000 L"); [tankId] is what an
+  /// order is matched on.
   final String fuelName;
   final double litres;
   final DeliveryVehicle vehicle;
@@ -92,6 +113,7 @@ class PurchaseOrder {
   const PurchaseOrder({
     required this.poNumber,
     required this.date,
+    required this.tankId,
     required this.fuelName,
     required this.litres,
     required this.vehicle,

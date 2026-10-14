@@ -12,7 +12,7 @@ import '../widgets/wave_clipper.dart';
 /// fix), shorter still (5 fields need more room than the 2-field login).
 ///
 /// Create Account only goes ahead once the form is valid: a username or
-/// Gmail, a password of 6+ characters, a date of birth, a station name and
+/// Gmail (a valid email address if it has an '@'), a password of 6+ characters, a date of birth, a station name and
 /// a whole number of stations from 1 to [Station.maxSignupStations].
 class SignupScreen extends StatefulWidget {
   final Widget? stationImage;
@@ -174,7 +174,8 @@ class _SignupScreenState extends State<SignupScreen> {
                         controller: _userController,
                         keyboardType: TextInputType.emailAddress,
                         textInputAction: TextInputAction.next,
-                        validator: Validators.requiredText('Enter a username or Gmail address'),
+                        // With an '@' it is meant as an email, so it must be one.
+                        validator: Validators.usernameOrEmail('Enter a username or Gmail address'),
                       ),
                       const SizedBox(height: 14),
                       AppTextField(
@@ -294,22 +295,32 @@ class _BackButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ClipOval(
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 6, sigmaY: 6),
-        child: Material(
-          color: const Color(0x73170F0F),
-          child: InkWell(
-            onTap: onTap,
-            child: Container(
-              width: 38,
-              height: 38,
-              alignment: Alignment.center,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
+    // Announced as a "Back" button, like the app bars' back arrows: one
+    // node with the label and the tap, in place of the InkWell's unlabelled
+    // one.
+    return Semantics(
+      button: true,
+      enabled: onTap != null,
+      label: MaterialLocalizations.of(context).backButtonTooltip,
+      onTap: onTap,
+      excludeSemantics: true,
+      child: ClipOval(
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 6, sigmaY: 6),
+          child: Material(
+            color: const Color(0x73170F0F),
+            child: InkWell(
+              onTap: onTap,
+              child: Container(
+                width: 38,
+                height: 38,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
+                ),
+                child: const Icon(Icons.arrow_back, color: Colors.white, size: 18),
               ),
-              child: const Icon(Icons.arrow_back, color: Colors.white, size: 18),
             ),
           ),
         ),

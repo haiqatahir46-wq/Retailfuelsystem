@@ -24,11 +24,18 @@
 // The web build can't use this at all: Google's Places web service isn't
 // callable from a browser, so on web every call throws a PlacesException
 // saying so. The same proxy would make it work there too.
+//
+// Errors: every failure is a PlacesException whose `message` is a fixed,
+// friendly sentence chosen by the kind of failure (no key, web, timeout,
+// no connection, key/API rejected, quota, Google down, bad response).
+// Google's own error text is NEVER put in `message`: it can name the Cloud
+// project number and console URLs, which an owner shouldn't see. It goes
+// in `debugMessage` instead, and is printed in debug builds only.
 import 'dart:async';
 import 'dart:convert';
 import 'dart:math';
 
-import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/foundation.dart' show debugPrint, kDebugMode, kIsWeb;
 import 'package:http/http.dart' as http;
 
 /// Supplied at build time with --dart-define=PLACES_API_KEY=...; empty when
@@ -36,12 +43,21 @@ import 'package:http/http.dart' as http;
 const String kPlacesApiKey = String.fromEnvironment('PLACES_API_KEY');
 
 /// A location-search failure with a [message] that's safe to show the user
-/// as-is (no stack traces, no "Bad state: ..." prefixes).
+/// as-is (no stack traces, no "Bad state: ..." prefixes, nothing from
+/// Google's response).
 class PlacesException implements Exception {
   final String message;
 
-  const PlacesException(this.message);
+  /// What actually went wrong, for a developer: Google's error status and
+  /// text, or the underlying exception. Never shown in the UI (it can hold
+  /// the Cloud project number and console URLs); null when [message] says
+  /// it all.
+  final String? debugMessage;
 
+  const PlacesException(this.message, {this.debugMessage});
+
+  /// Just [message], so a stray `'$e'` in the UI still shows only the safe
+  /// text.
   @override
   String toString() => message;
 }
@@ -98,6 +114,21 @@ class GooglePlacesService {
   static const _host = 'places.googleapis.com';
   static const _timeout = Duration(seconds: 10);
   static const _malformedMessage = 'Location search sent back an unexpected response. Please try again.';
+  static const _timeoutMessage = 'Location search took too long to respond. Check your connection and try again.';
+  static const _connectionMessage = "Couldn't reach Google Places. Check your internet connection and try again.";
+
+  /// 400/401/403: Google refused the request itself - a missing, invalid or
+  /// restricted key, or Places API (New) not enabled / no billing. Nothing
+  /// the owner can fix by retrying.
+  static const _setupMessage =
+      "Location search isn't available right now because of a problem with the app's Google Places setup. "
+      'Please try again later.';
+
+  /// 429: the key's quota is used up.
+  static const _quotaMessage = 'Location search is busy right now (too many requests). Please try again in a few minutes.';
+
+  /// 5xx: Google's side failed.
+  static const _serverMessage = 'Google Places is having trouble right now. Please try again in a few minutes.';
 
   /// Releases the HTTP connection. Call from the owning State's dispose.
   void close() {
@@ -200,15 +231,22 @@ class GooglePlacesService {
   }
 
   /// Runs [request] with a timeout and returns its JSON object body, turning
-  /// every way it can fail into a [PlacesException].
+  /// every way it can fail into a [PlacesException] with a fixed, friendly
+  /// message (see the file header).
   Future<Map<String, dynamic>> _send(Future<http.Response> Function() request) async {
     final http.Response response;
     try {
       response = await request().timeout(_timeout);
     } on TimeoutException {
-      throw const PlacesException('Location search took too long to respond. Check your connection and try again.');
-    } on http.ClientException {
-      throw const PlacesException("Couldn't reach Google Places. Check your internet connection and try again.");
+      throw const PlacesException(_timeoutMessage);
+    } on PlacesException {
+      rethrow;
+    } catch (e) {
+      // http.ClientException, but also anything else the HTTP stack throws
+      // unwrapped - a HandshakeException (bad TLS, e.g. a captive Wi-Fi
+      // portal), a SocketException, ... To the owner each one is "couldn't
+      // reach Google", and none may escape as a raw error.
+      throw _logged(PlacesException(_connectionMessage, debugMessage: '$e'));
     }
 
     // Decode the bytes as UTF-8 ourselves: response.body falls back to
@@ -221,20 +259,37 @@ class GooglePlacesService {
       decoded = null;
     }
 
-    if (response.statusCode != 200) {
+    final status = response.statusCode;
+    if (status != 200) {
       final apiMessage = _apiErrorMessage(decoded);
-      throw PlacesException(
-        apiMessage != null
-            ? 'Location search failed: $apiMessage'
-            : 'Location search failed (HTTP ${response.statusCode}). Please try again.',
-      );
+      throw _logged(PlacesException(
+        _statusMessage(status),
+        debugMessage: 'HTTP $status${apiMessage == null ? '' : ': $apiMessage'}',
+      ));
     }
     if (decoded is! Map<String, dynamic>) throw const PlacesException(_malformedMessage);
     return decoded;
   }
 
+  /// The user-facing message for a non-200 [status]. Fixed text only:
+  /// Google's explanation goes to [PlacesException.debugMessage].
+  static String _statusMessage(int status) {
+    if (status == 400 || status == 401 || status == 403) return _setupMessage;
+    if (status == 429) return _quotaMessage;
+    if (status >= 500 && status <= 599) return _serverMessage;
+    return 'Location search failed (HTTP $status). Please try again.';
+  }
+
+  /// Prints [e]'s [PlacesException.debugMessage] in debug builds, where a
+  /// developer can act on it (e.g. "API key not valid"), and returns [e].
+  static PlacesException _logged(PlacesException e) {
+    if (kDebugMode && e.debugMessage != null) debugPrint('Places: ${e.debugMessage}');
+    return e;
+  }
+
   /// Google's own explanation from an error body
-  /// (`{"error": {"message": "..."}}`), if there is one.
+  /// (`{"error": {"message": "..."}}`), if there is one. For
+  /// [PlacesException.debugMessage] only, never the user-facing message.
   static String? _apiErrorMessage(Object? decoded) {
     if (decoded is! Map) return null;
     final error = decoded['error'];

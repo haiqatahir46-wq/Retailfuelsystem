@@ -10,9 +10,10 @@ import 'empty_state.dart';
 // the period dropdown, the total card, one card per period row and the
 // chart.
 
-/// The red "Total Revenue · Weekly   PKR 1,234,000" card. The label takes
-/// the room it needs and the amount shrinks to fit the rest, so a long
-/// total never overflows a narrow screen.
+/// The red "Total Revenue · Weekly   PKR 1,234,000" card. The label and the
+/// amount get half the row each (both flex 1): the label wraps onto a
+/// second line if it must, and the amount shrinks to fit its half, so a
+/// long total never overflows a narrow screen.
 class TotalRevenueCard extends StatelessWidget {
   final String label;
   final String total;
@@ -81,22 +82,31 @@ class PeriodDropdown extends StatelessWidget {
             ),
           )
           .toList(),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        decoration: BoxDecoration(
-          color: AppColors.background,
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: AppColors.borderDivider),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              periodLabel(period),
-              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.primaryText),
+      // The menu button's tap area is its child, so the child is at least
+      // 48dp tall (the recommended minimum) with the smaller box centred
+      // in it, which keeps its look.
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(minHeight: 48),
+        child: Align(
+          widthFactor: 1,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            decoration: BoxDecoration(
+              color: AppColors.background,
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: AppColors.borderDivider),
             ),
-            const Icon(Icons.keyboard_arrow_down, size: 18, color: AppColors.secondaryText),
-          ],
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  periodLabel(period),
+                  style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.primaryText),
+                ),
+                const Icon(Icons.keyboard_arrow_down, size: 18, color: AppColors.secondaryText),
+              ],
+            ),
+          ),
         ),
       ),
     );
@@ -257,7 +267,19 @@ class SalesBarChart extends StatelessWidget {
           else ...[
             SizedBox(
               height: 170,
-              child: period == SalesReportPeriod.yearly ? _buildLineChart() : _buildBarChart(),
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  final left = compactLeftTitles(context, _maxLitres);
+                  // Every label that fits: on a narrow chart or with large
+                  // text, Yearly's 12 would overlap, so some are skipped.
+                  final stride = axisLabelStride(
+                    context,
+                    labels: [for (final d in data) chartAxisLabel(d.label)],
+                    width: constraints.maxWidth - left.sideTitles.reservedSize,
+                  );
+                  return period == SalesReportPeriod.yearly ? _buildLineChart(left, stride) : _buildBarChart(left, stride);
+                },
+              ),
             ),
             const SizedBox(height: 10),
             Wrap(
@@ -278,8 +300,9 @@ class SalesBarChart extends StatelessWidget {
       .fold<double>(0, (a, b) => b > a ? b : a);
 
   /// Bottom labels: one per row, shortened ("W1"), skipping anything
-  /// between rows.
-  AxisTitles get _bottomTitles => AxisTitles(
+  /// between rows. With a [stride] above 1 only every stride-th row is
+  /// labelled, counting back from the newest, which always is.
+  AxisTitles _bottomTitles(int stride) => AxisTitles(
         sideTitles: SideTitles(
           showTitles: true,
           interval: 1,
@@ -287,15 +310,16 @@ class SalesBarChart extends StatelessWidget {
           getTitlesWidget: (value, meta) {
             final i = value.round();
             if (value != i || i < 0 || i >= data.length) return const SizedBox.shrink();
+            if ((data.length - 1 - i) % stride != 0) return const SizedBox.shrink();
             return Padding(
               padding: const EdgeInsets.only(top: 6),
-              child: Text(chartAxisLabel(data[i].label), style: _axisStyle),
+              child: Text(chartAxisLabel(data[i].label), maxLines: 1, style: _axisStyle),
             );
           },
         ),
       );
 
-  Widget _buildBarChart() {
+  Widget _buildBarChart(AxisTitles leftTitles, int stride) {
     final axis = chartYAxis(_maxLitres);
 
     return BarChart(
@@ -305,10 +329,10 @@ class SalesBarChart extends StatelessWidget {
         gridData: _grid(axis.step),
         borderData: FlBorderData(show: false),
         titlesData: FlTitlesData(
-          leftTitles: compactLeftTitles(axis.step),
+          leftTitles: leftTitles,
           rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
           topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-          bottomTitles: _bottomTitles,
+          bottomTitles: _bottomTitles(stride),
         ),
         barTouchData: BarTouchData(
           touchTooltipData: BarTouchTooltipData(
@@ -336,7 +360,7 @@ class SalesBarChart extends StatelessWidget {
     );
   }
 
-  Widget _buildLineChart() {
+  Widget _buildLineChart(AxisTitles leftTitles, int stride) {
     final axis = chartYAxis(_maxLitres);
 
     LineChartBarData line(String fuel) => LineChartBarData(
@@ -357,12 +381,12 @@ class SalesBarChart extends StatelessWidget {
         gridData: _grid(axis.step),
         borderData: FlBorderData(show: false),
         titlesData: FlTitlesData(
-          leftTitles: compactLeftTitles(axis.step),
+          leftTitles: leftTitles,
           rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
           topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-          // interval: 1 (in _bottomTitles) labels every month, instead of
-          // fl_chart picking an interval that skips some on a narrow screen.
-          bottomTitles: _bottomTitles,
+          // interval: 1 (in _bottomTitles) puts a label on every month that
+          // [stride] keeps, rather than fl_chart picking its own interval.
+          bottomTitles: _bottomTitles(stride),
         ),
         lineTouchData: LineTouchData(
           touchTooltipData: LineTouchTooltipData(
@@ -394,24 +418,68 @@ class SalesBarChart extends StatelessWidget {
 
 const _axisStyle = TextStyle(fontSize: 10, color: AppColors.secondaryText);
 
-/// A left axis labelled every [step] with compact values ("20k", "1.5M").
-/// Shared by the report chart and the Dashboard's trend chart.
-AxisTitles compactLeftTitles(double step) => AxisTitles(
-      sideTitles: SideTitles(
-        showTitles: true,
-        interval: step,
-        reservedSize: 34,
-        getTitlesWidget: (value, meta) => Padding(
-          padding: const EdgeInsets.only(right: 4),
-          child: Text(
-            formatCompact(value),
-            maxLines: 1,
-            textAlign: TextAlign.right,
-            style: _axisStyle,
-          ),
+/// A left axis for a chart whose highest point is [maxValue], labelled
+/// every chartYAxis step with compact values ("20k", "1.5M"). Shared by
+/// the report chart and the Dashboard's trend chart.
+///
+/// The column is as wide as the widest label at the system text size, so
+/// larger text widens it rather than cutting labels short; were a label
+/// still too wide, it shrinks to fit. Either way the unit stays: a clipped
+/// "1.5M" would read "1.5", the wrong magnitude.
+AxisTitles compactLeftTitles(BuildContext context, double maxValue) {
+  final axis = chartYAxis(maxValue);
+  final labels = [for (var v = 0.0; v <= axis.maxY; v += axis.step) formatCompact(v)];
+  // Room for the widest label, plus the gap before the plot; never less
+  // than the 34dp it has always had, nor more than a fifth of a phone.
+  final reservedSize = (measureAxisLabels(context, labels) + 6).clamp(34.0, 72.0);
+  return AxisTitles(
+    sideTitles: SideTitles(
+      showTitles: true,
+      interval: axis.step,
+      reservedSize: reservedSize,
+      getTitlesWidget: (value, meta) => Padding(
+        padding: const EdgeInsets.only(right: 4),
+        child: FittedBox(
+          fit: BoxFit.scaleDown,
+          alignment: Alignment.centerRight,
+          child: Text(formatCompact(value), maxLines: 1, style: _axisStyle),
         ),
       ),
-    );
+    ),
+  );
+}
+
+/// The width of the widest of [labels] drawn as an axis label at the
+/// system text size (MediaQuery's text scaler).
+double measureAxisLabels(BuildContext context, Iterable<String> labels) {
+  final scaler = MediaQuery.textScalerOf(context);
+  final style = DefaultTextStyle.of(context).style.merge(_axisStyle);
+  var widest = 0.0;
+  for (final label in labels) {
+    final painter = TextPainter(
+      text: TextSpan(text: label, style: style),
+      textDirection: TextDirection.ltr,
+      textScaler: scaler,
+      maxLines: 1,
+    )..layout();
+    widest = math.max(widest, painter.width);
+    painter.dispose();
+  }
+  return widest;
+}
+
+/// How many rows each x-axis label must cover so that none overlap: 1
+/// (label every row) when [labels] fit side by side across [width] at the
+/// system text size, otherwise 2 (every other row), 3, ... The chart
+/// passes its own width (from a LayoutBuilder) less the left axis.
+int axisLabelStride(BuildContext context, {required List<String> labels, required double width}) {
+  if (labels.isEmpty || width <= 0) return 1;
+  // Each row's share of the width, and what one label needs: its text plus
+  // a little air on either side.
+  final perRow = width / labels.length;
+  final needed = measureAxisLabels(context, labels) + 6;
+  return math.max(1, (needed / perRow).ceil());
+}
 
 /// A short x-axis label for a report row: "Day 3" -> "D3", "Week 1" ->
 /// "W1", "Month 12" -> "M12". Any other label is returned as it is.

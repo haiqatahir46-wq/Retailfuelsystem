@@ -238,15 +238,26 @@ class _StationCard extends StatelessWidget {
               ],
             ),
           ),
-          Material(
-            color: AppColors.cardBackground,
-            shape: const CircleBorder(),
-            child: InkWell(
-              customBorder: const CircleBorder(),
-              onTap: onEdit,
-              child: const Padding(
-                padding: EdgeInsets.all(9),
-                child: Icon(Icons.edit_outlined, color: AppColors.secondaryText, size: 18),
+          // The same 36dp circle as before, inside a 48dp tap target (the
+          // recommended minimum); the tooltip names it for a screen reader
+          // too.
+          Tooltip(
+            message: 'Edit station',
+            child: Material(
+              type: MaterialType.transparency,
+              child: InkResponse(
+                onTap: onEdit,
+                radius: 24,
+                child: SizedBox.square(
+                  dimension: 48,
+                  child: Center(
+                    child: Ink(
+                      padding: const EdgeInsets.all(9),
+                      decoration: const BoxDecoration(color: AppColors.cardBackground, shape: BoxShape.circle),
+                      child: const Icon(Icons.edit_outlined, color: AppColors.secondaryText, size: 18),
+                    ),
+                  ),
+                ),
               ),
             ),
           ),

@@ -21,8 +21,15 @@ import '../widgets/empty_state.dart';
 /// (MainTabsFlow passes session.logsFor / session.nozzlesFor): the Recent
 /// Entries and the Pump / Nozzle options never come from another station.
 ///
-/// Save Log checks the form (vehicle, fuel, nozzle and litres above 0 are
-/// required) but can't store anything yet, so a valid form only says so.
+/// Pump / Nozzle lists only the nozzles of the chosen Fuel Type (a nozzle
+/// pumps one grade), so the nozzle and the price behind Total Amount always
+/// agree; changing the fuel clears a nozzle of the old grade. With no
+/// nozzle to pick (none for that grade, or none at all) a message stands
+/// in for the dropdown and the form can't be saved.
+///
+/// Save Log checks the form (vehicle, fuel, nozzle, and litres above 0 and
+/// up to [VehicleLogEntry.maxLitres] are required) but can't store anything
+/// yet, so a valid form only says so.
 class LogsScreen extends StatefulWidget {
   final String stationName;
   final List<VehicleLogEntry> entries;
@@ -44,7 +51,11 @@ class LogsScreen extends StatefulWidget {
 class _LogsScreenState extends State<LogsScreen> {
   DeliveryVehicle? _vehicle;
   String? _fuelType;
-  String? _nozzle;
+
+  /// The chosen nozzle's id. An id rather than the Nozzle: the session
+  /// hands out fresh Nozzle objects on every read, and the dropdown matches
+  /// its value by ==.
+  String? _nozzleId;
   String? _transactionStatus;
   final _litresController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
@@ -98,7 +109,7 @@ class _LogsScreenState extends State<LogsScreen> {
     setState(() {
       _vehicle = null;
       _fuelType = null;
-      _nozzle = null;
+      _nozzleId = null;
       _transactionStatus = null;
       _autovalidate = AutovalidateMode.disabled;
       _formGeneration++;
@@ -118,10 +129,59 @@ class _LogsScreenState extends State<LogsScreen> {
       ..showSnackBar(const SnackBar(content: Text("Saving logs isn't available yet.")));
   }
 
+  /// Fuel Type changed. A nozzle pumps one grade, so one picked for the
+  /// old grade no longer fits and is cleared.
+  void _onFuelChanged(String? fuel) {
+    setState(() {
+      if (fuel != _fuelType) _nozzleId = null;
+      _fuelType = fuel;
+    });
+  }
+
+  /// The Pump / Nozzle field: a dropdown of the chosen grade's nozzles
+  /// (disabled until a grade is chosen), or, when there is no nozzle to
+  /// pick, a message saying why. That message is a form field that never
+  /// validates, so Save Log can't go ahead without a nozzle.
+  Widget _buildNozzleField() {
+    const label = 'Pump / Nozzle';
+    final fuel = _fuelType;
+    final options = [
+      for (final n in widget.nozzles)
+        if (n.fuelName == fuel) n,
+    ];
+    final String? unavailable;
+    if (widget.nozzles.isEmpty) {
+      unavailable = 'No nozzles set up for this station yet, so there is nothing to log.';
+    } else if (fuel != null && options.isEmpty) {
+      unavailable = 'No $fuel nozzles at this station. Choose another fuel type.';
+    } else {
+      unavailable = null;
+    }
+
+    if (unavailable != null) {
+      return FormField<String>(
+        key: ValueKey('nozzle-none-$_formGeneration'),
+        validator: (_) => unavailable,
+        // The notice already says what's wrong, so the error isn't shown
+        // a second time under it.
+        builder: (_) => _FieldNotice(label: label, message: unavailable!),
+      );
+    }
+    return _AppDropdown<String>(
+      key: ValueKey('nozzle-$_formGeneration'),
+      label: label,
+      value: _nozzleId,
+      options: [for (final n in options) n.id],
+      optionLabel: (id) => options.firstWhere((n) => n.id == id).name,
+      disabledHint: 'Choose the fuel type first',
+      onChanged: (v) => setState(() => _nozzleId = v),
+      validator: (v) => v == null ? 'Choose the pump and nozzle' : null,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final entries = widget.entries;
-    final nozzleOptions = [for (final n in widget.nozzles) n.name];
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -170,19 +230,11 @@ class _LogsScreenState extends State<LogsScreen> {
                 value: _fuelType,
                 options: kFuelGrades,
                 optionLabel: (v) => v,
-                onChanged: (v) => setState(() => _fuelType = v),
+                onChanged: _onFuelChanged,
                 validator: (v) => v == null ? 'Choose the fuel type' : null,
               ),
               const SizedBox(height: 14),
-              _AppDropdown<String>(
-                key: ValueKey('nozzle-$_formGeneration'),
-                label: 'Pump / Nozzle',
-                value: _nozzle,
-                options: nozzleOptions,
-                optionLabel: (v) => v,
-                onChanged: (v) => setState(() => _nozzle = v),
-                validator: (v) => v == null ? 'Choose the pump and nozzle' : null,
-              ),
+              _buildNozzleField(),
               const SizedBox(height: 14),
               AppTextField(
                 key: ValueKey('litres-$_formGeneration'),
@@ -190,7 +242,10 @@ class _LogsScreenState extends State<LogsScreen> {
                 hint: '',
                 controller: _litresController,
                 keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                validator: Validators.positiveNumber(),
+                validator: Validators.positiveNumber(
+                  max: VehicleLogEntry.maxLitres,
+                  maxMessage: 'Too large (max ${formatLimit(VehicleLogEntry.maxLitres)} L in one log)',
+                ),
               ),
               const SizedBox(height: 14),
               _ReadOnlyField(label: 'Total Amount', value: 'PKR ${formatThousands(_totalAmount)}'),
@@ -262,7 +317,8 @@ class _LogsScreenState extends State<LogsScreen> {
 /// [value] seeds the field when it's created (and the field follows it when
 /// it changes); to reset a filled-in dropdown, the parent gives it a new key.
 /// A surrounding Form checks it with [validator]; like AppTextField it has
-/// no fixed height, so an error line or larger text isn't clipped.
+/// no fixed height, so an error line or larger text isn't clipped. With no
+/// [options] it is disabled and shows [disabledHint].
 class _AppDropdown<T> extends StatelessWidget {
   final String label;
   final T? value;
@@ -270,6 +326,7 @@ class _AppDropdown<T> extends StatelessWidget {
   final String Function(T option) optionLabel;
   final ValueChanged<T?> onChanged;
   final FormFieldValidator<T>? validator;
+  final String? disabledHint;
 
   @override
   Widget build(BuildContext context) {
@@ -298,6 +355,14 @@ class _AppDropdown<T> extends StatelessWidget {
               .toList(),
           onChanged: onChanged,
           validator: validator,
+          disabledHint: disabledHint == null
+              ? null
+              : Text(
+                  disabledHint!,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(fontSize: 14, color: AppColors.secondaryText),
+                ),
           decoration: InputDecoration(
             filled: true,
             fillColor: AppColors.background,
@@ -339,7 +404,54 @@ class _AppDropdown<T> extends StatelessWidget {
     required this.optionLabel,
     required this.onChanged,
     this.validator,
+    this.disabledHint,
   });
+}
+
+/// A message in place of a form field, laid out like one (label above, a
+/// rounded box at least 48dp tall): for a field that has nothing to offer,
+/// such as Pump / Nozzle at a station with no nozzles of the chosen grade.
+class _FieldNotice extends StatelessWidget {
+  final String label;
+  final String message;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.secondaryText),
+        ),
+        const SizedBox(height: 6),
+        Container(
+          constraints: const BoxConstraints(minHeight: 48),
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+          decoration: BoxDecoration(
+            color: AppColors.statusAttention.withValues(alpha: 0.08),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: AppColors.statusAttention.withValues(alpha: 0.5)),
+          ),
+          child: Row(
+            children: [
+              const Icon(Icons.info_outline, size: 18, color: AppColors.statusAttention),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  message,
+                  style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.primaryText),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  const _FieldNotice({required this.label, required this.message});
 }
 
 /// A computed, non-editable value laid out like AppTextField (label above,

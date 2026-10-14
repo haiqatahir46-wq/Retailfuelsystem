@@ -9,6 +9,7 @@ import 'package:petrolpump_flutter/models/sales.dart';
 import 'package:petrolpump_flutter/models/station.dart';
 import 'package:petrolpump_flutter/models/tank_stock.dart';
 import 'package:petrolpump_flutter/state/app_session.dart';
+import 'package:petrolpump_flutter/state/ids.dart';
 
 /// Every id the demo data is keyed on. Nothing created in the app may reuse
 /// one, or it would show that demo station's figures.
@@ -46,6 +47,15 @@ void main() {
       expect(s.owner!.email, demoOwner.email);
     });
 
+    test('only a valid email becomes the owner\'s email; a username keeps the demo one', () {
+      expect((AppSession()..signInDemo(email: ' amir@gmail.com ')).owner!.email, 'amir@gmail.com');
+      for (final notEmail in ['amir', 'Amir Khan', 'amir@', '@gmail.com', 'amir@gmail', 'a b@c.d']) {
+        final s = AppSession()..signInDemo(email: notEmail);
+        expect(s.owner!.email, demoOwner.email, reason: notEmail);
+        expect(s.owner!.name, demoOwner.name, reason: notEmail);
+      }
+    });
+
     test('the demo stations show the demo data', () {
       final s = _demoSession();
       expect(s.tanksFor('station-1').map((t) => t.id), tanksForStation('station-1').map((t) => t.id));
@@ -53,6 +63,18 @@ void main() {
       expect(s.purchaseOrdersFor('station-2').map((o) => o.poNumber), purchaseOrdersFor('station-2').map((o) => o.poNumber));
       expect(s.logsFor('station-1'), logsFor('station-1'));
       expect(s.nozzlesFor('station-1'), hasLength(12));
+    });
+
+    test('demo nozzles are read afresh, not kept from sign-in', () {
+      final s = _demoSession();
+      final first = s.nozzlesFor('station-1');
+      final again = s.nozzlesFor('station-1');
+      expect(again.map((n) => n.id), first.map((n) => n.id));
+      expect(identical(again.first, first.first), isFalse);
+      // Pump 1 Nozzle 1 reported a minute before this read.
+      final elapsed = DateTime.now().difference(again.firstWhere((n) => n.id == 'station-1-p1n1').lastUpdated);
+      expect(elapsed, greaterThanOrEqualTo(const Duration(minutes: 1)));
+      expect(elapsed, lessThan(const Duration(minutes: 2)));
     });
 
     test('lookups for a station the owner doesn\'t have are empty', () {
@@ -210,9 +232,17 @@ void main() {
   });
 
   group('placeReorder', () {
+    /// One of [s]'s tanks by id, e.g. 'station-1-diesel', with today's level.
+    TankStock tankOf(AppSession s, String stationId, String tankId) =>
+        s.tanksFor(stationId).firstWhere((t) => t.id == tankId);
+
     test('adds a pending order dated today at the top, with a unique PO number', () {
       final s = _demoSession();
-      final tank = s.tanksFor('station-1').first;
+      // Diesel: 16,000 L of 25,000, nothing on order, so 9,000 L of room.
+      final tank = tankOf(s, 'station-1', 'station-1-diesel');
+      // Captured first: the order is dated by the clock inside placeReorder,
+      // which is already the next day if this runs across midnight.
+      final before = DateTime.now();
       final first = s.placeReorder(stationId: 'station-1', tank: tank, litres: 5000)!;
       final second = s.placeReorder(stationId: 'station-1', tank: tank, litres: 3000)!;
 
@@ -221,15 +251,71 @@ void main() {
       expect(orders[1], first);
       expect(orders, hasLength(purchaseOrdersFor('station-1').length + 2));
       expect(second.status, PurchaseOrderStatus.pending);
+      expect(second.tankId, tank.id);
       expect(second.fuelName, tank.fuelName);
       expect(second.litres, 3000);
-      final now = DateTime.now();
-      expect(second.date, DateTime(now.year, now.month, now.day));
+      final today = DateTime(before.year, before.month, before.day);
+      expect(second.date, anyOf(today, DateTime(before.year, before.month, before.day + 1)));
 
       final numbers = orders.map((o) => o.poNumber).toList();
       expect(numbers.toSet(), hasLength(numbers.length));
       // Placed at station-1 only.
       expect(s.purchaseOrdersFor('station-2'), hasLength(purchaseOrdersFor('station-2').length));
+    });
+
+    test('PO numbers carry on after the highest one the owner has, at any station', () {
+      final s = _demoSession();
+      final year = DateTime.now().year;
+      // The demo orders go up to PO-2026-0063 (at station-1).
+      final a = s.placeReorder(stationId: 'station-2', tank: tankOf(s, 'station-2', 'station-2-diesel'), litres: 100)!;
+      final b = s.placeReorder(stationId: 'station-1', tank: tankOf(s, 'station-1', 'station-1-diesel'), litres: 100)!;
+      expect(a.poNumber, 'PO-$year-0064');
+      expect(b.poNumber, 'PO-$year-0065');
+    });
+
+    test('pendingLitresFor adds up the pending demo and session orders for one tank', () {
+      final s = _demoSession();
+      // The demo PO-2026-0063: 15,000 L of Petrol on its way to station-1.
+      expect(s.pendingLitresFor('station-1-petrol'), 15000);
+      expect(s.pendingLitresFor('station-1-diesel'), 0); // only a delivered order
+      expect(s.pendingLitresFor('station-2-petrol'), 8000);
+      expect(s.pendingLitresFor('no-such-tank'), 0);
+
+      s.placeReorder(stationId: 'station-1', tank: tankOf(s, 'station-1', 'station-1-diesel'), litres: 2500);
+      expect(s.pendingLitresFor('station-1-diesel'), 2500);
+      expect(s.pendingLitresFor('station-2-diesel'), 0);
+
+      // A new owner never counts the demo orders.
+      expect(_signedUp().pendingLitresFor('station-1-petrol'), 0);
+    });
+
+    test('rejects an order bigger than the tank\'s room, counting what is already on order', () {
+      final s = _demoSession();
+      // Diesel: 9,000 L of space, nothing on order.
+      final diesel = tankOf(s, 'station-1', 'station-1-diesel');
+      expect(s.placeReorder(stationId: 'station-1', tank: diesel, litres: 9001), isNull);
+      expect(s.placeReorder(stationId: 'station-1', tank: diesel, litres: 9000), isNotNull);
+      // Now fully on order: the same 9,000 L of space can't be ordered twice.
+      expect(s.placeReorder(stationId: 'station-1', tank: diesel, litres: 1), isNull);
+
+      // Petrol: 18,000 L of space, 15,000 already on order, so 3,000 L of room.
+      final petrol = tankOf(s, 'station-1', 'station-1-petrol');
+      expect(s.placeReorder(stationId: 'station-1', tank: petrol, litres: 3001), isNull);
+      expect(s.placeReorder(stationId: 'station-1', tank: petrol, litres: 3000), isNotNull);
+      expect(s.pendingLitresFor('station-1-petrol'), 18000);
+
+      // Exactly the two orders that fitted were placed.
+      expect(s.purchaseOrdersFor('station-1'), hasLength(purchaseOrdersFor('station-1').length + 2));
+    });
+
+    test('rejects a full tank, and a tank that isn\'t that station\'s', () {
+      final s = _demoSession();
+      final added = s.addStation(name: 'New', location: '', nozzleCounts: const {}, capacities: const {'Petrol': 20000});
+      // No sales yet, so its tank is full.
+      expect(s.placeReorder(stationId: added.id, tank: s.tanksFor(added.id).single, litres: 1), isNull);
+      expect(s.placeReorder(stationId: 'station-1', tank: tankOf(s, 'station-2', 'station-2-diesel'), litres: 100), isNull);
+      expect(s.purchaseOrdersFor('station-1'), hasLength(purchaseOrdersFor('station-1').length));
+      expect(s.purchaseOrdersFor(added.id), isEmpty);
     });
 
     test('places nothing for zero, negative or non-finite litres, or another owner\'s station', () {
@@ -248,6 +334,7 @@ void main() {
     s.addStaff(name: 'A', role: 'Attendant', phone: '1');
     s.setThreshold('station-1-petrol', 5000);
     s.placeReorder(stationId: 'station-1', tank: s.tanksFor('station-1').first, litres: 100);
+    expect(s.purchaseOrdersFor('station-1'), hasLength(purchaseOrdersFor('station-1').length + 1));
     s.signOut();
     expect(s.isSignedIn, isFalse);
     expect(s.owner, isNull);
@@ -275,5 +362,37 @@ void main() {
     s.placeReorder(stationId: 'station-2', tank: s.tanksFor('station-2').first, litres: 100);
     s.signOut();
     expect(calls, 8);
+  });
+
+  group('ids', () {
+    test('newId never repeats, even for many calls in a tight loop', () {
+      final ids = [for (var i = 0; i < 10000; i++) newId('x')];
+      expect(ids.toSet(), hasLength(ids.length));
+      expect(ids.every((id) => id.startsWith('x-') && id.split('-').length == 3), isTrue);
+    });
+
+    test('nextPoNumber continues after the highest sequence, whatever its year', () {
+      final now = DateTime(2027, 3, 1);
+      expect(nextPoNumber(['PO-2026-0063', 'PO-2026-0058'], now), 'PO-2027-0064');
+      expect(nextPoNumber(['PO-2025-0100', 'PO-2026-0007'], now), 'PO-2027-0101');
+      expect(nextPoNumber(['PO-2026-9999'], now), 'PO-2027-10000');
+    });
+
+    test('nextPoNumber skips numbers in another form and starts at 0001', () {
+      final now = DateTime(2026, 10, 13);
+      expect(nextPoNumber(const [], now), 'PO-2026-0001');
+      expect(nextPoNumber(['PO-MG7K2Q1X-3', 'garbage', 'PO-26-0500', 'PO-2026-0002'], now), 'PO-2026-0003');
+      expect(nextPoNumber(['PO-2026-99999999999999999999999'], now), 'PO-2026-0001');
+    });
+
+    test('nextPoNumber never gives an existing number', () {
+      final now = DateTime(2026, 10, 13);
+      final numbers = <String>['PO-2026-0063'];
+      for (var i = 0; i < 50; i++) {
+        final next = nextPoNumber(numbers, now);
+        expect(numbers, isNot(contains(next)));
+        numbers.add(next);
+      }
+    });
   });
 }

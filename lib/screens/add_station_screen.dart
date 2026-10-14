@@ -11,8 +11,9 @@ import '../widgets/app_text_field.dart';
 /// Add Station only goes ahead once the form is valid: a name and a
 /// location; each nozzle count a whole number from 0 to
 /// [Station.maxNozzlesPerGrade] (blank = 0) with at least one nozzle in
-/// all; and a capacity above 0 for every grade that has nozzles. Numbers
-/// may be typed with commas ("20,000").
+/// all; and a capacity above 0 for every grade that has nozzles, none over
+/// [Station.maxCapacityLitres]. Numbers may be typed with commas
+/// ("20,000").
 class AddStationScreen extends StatefulWidget {
   final VoidCallback? onBack;
   final void Function({
@@ -72,15 +73,19 @@ class _AddStationScreenState extends State<AddStationScreen> {
 
   static final _nozzleCount = Validators.intInRange(0, Station.maxNozzlesPerGrade, required: false);
 
+  /// What a capacity may be: a number from 0 up to
+  /// [Station.maxCapacityLitres], or blank.
+  static final _capacity = Validators.nonNegativeNumber(max: Station.maxCapacityLitres);
+
   /// A grade's capacity: required (above 0) once that grade has nozzles,
-  /// otherwise optional, but a number from 0 up if typed.
+  /// otherwise optional; either way, if typed, a number from 0 up to
+  /// [Station.maxCapacityLitres] ("-5" says it can't be negative).
   FormFieldValidator<String> _capacityValidator(TextEditingController nozzles) {
-    final required = Validators.positiveNumber();
     return (value) {
-      final text = (value ?? '').trim();
-      if (_int(nozzles) > 0) return required(text) == null ? null : 'Enter a capacity above 0 for these nozzles';
-      if (text.isEmpty) return null;
-      return parseNumber(text) == null ? 'Enter a number, e.g. 20,000' : null;
+      final problem = _capacity(value);
+      if (problem != null) return problem;
+      if (_int(nozzles) > 0 && (parseNumber(value ?? '') ?? 0) <= 0) return 'Enter a capacity above 0 for these nozzles';
+      return null;
     };
   }
 
@@ -118,6 +123,7 @@ class _AddStationScreenState extends State<AddStationScreen> {
         ),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: AppColors.primaryText),
+          tooltip: MaterialLocalizations.of(context).backButtonTooltip,
           onPressed: widget.onBack,
         ),
         bottom: const PreferredSize(

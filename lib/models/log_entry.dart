@@ -14,6 +14,12 @@ class VehicleLogEntry {
   final double? litres;
   final LogStatus status;
 
+  /// The most litres one log entry may record. The largest road tankers
+  /// carry around 50,000 L, so no single vehicle takes more in one go;
+  /// anything bigger is a typing slip. For the Logs form's Litres
+  /// Dispensed validator.
+  static const maxLitres = 50000.0;
+
   const VehicleLogEntry({
     required this.vehicle,
     required this.fuelType,

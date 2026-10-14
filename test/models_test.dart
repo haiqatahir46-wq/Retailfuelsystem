@@ -85,17 +85,62 @@ void main() {
 
     test('handles negatives', () {
       expect(formatThousands(-1234), '-1,234');
+      expect(formatThousands(-1234.5), '-1,235');
+      expect(formatThousands(-999999), '-999,999');
+    });
+
+    test('a value that rounds to zero is "0", never "-0"', () {
+      expect(formatThousands(-0.4), '0');
+      expect(formatThousands(-0.0), '0');
+      expect(formatThousands(0.4), '0');
+    });
+
+    test('rounds across a separator boundary', () {
+      expect(formatThousands(1499.6), '1,500');
+      expect(formatThousands(999.6), '1,000');
+      expect(formatThousands(999999), '999,999');
+      expect(formatThousands(999999.5), '1,000,000');
+    });
+
+    test('never uses exponent notation', () {
+      expect(formatThousands(1e21), '1,000,000,000,000,000,000,000');
+      expect(formatThousands(-1e21), '-1,000,000,000,000,000,000,000');
+      expect(formatThousands(1e25), isNot(contains('e')));
     });
   });
 
-  test('formatCompact shortens axis values', () {
-    expect(formatCompact(0), '0');
-    expect(formatCompact(950), '950');
-    expect(formatCompact(1500), '1.5k');
-    expect(formatCompact(20000), '20k');
-    expect(formatCompact(800000), '800k');
-    expect(formatCompact(2400000), '2.4M');
-    expect(formatCompact(3000000), '3M');
+  group('formatCompact', () {
+    test('shortens axis values', () {
+      expect(formatCompact(0), '0');
+      expect(formatCompact(950), '950');
+      expect(formatCompact(1500), '1.5k');
+      expect(formatCompact(20000), '20k');
+      expect(formatCompact(800000), '800k');
+      expect(formatCompact(2400000), '2.4M');
+      expect(formatCompact(3000000), '3M');
+    });
+
+    test('rounds before picking the unit, so it never shows "1000k" or "1000"', () {
+      expect(formatCompact(999999), '1M');
+      expect(formatCompact(999.6), '1k');
+      expect(formatCompact(999.4), '999');
+      expect(formatCompact(1499.6), '1.5k');
+      expect(formatCompact(999999999), '1B');
+      expect(formatCompact(9.96), '10');
+    });
+
+    test('negatives mirror positives, and nothing reads "-0"', () {
+      expect(formatCompact(-1500), '-1.5k');
+      expect(formatCompact(-999999), '-1M');
+      expect(formatCompact(-0.4), '-0.4');
+      expect(formatCompact(-0.04), '0');
+      expect(formatCompact(-0.0), '0');
+    });
+
+    test('never uses exponent notation', () {
+      expect(formatCompact(1e21), '1000000000000B');
+      expect(formatCompact(1e35), isNot(contains('e')));
+    });
   });
 
   test('formatDate', () {

@@ -1,10 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:petrolpump_flutter/navigation/login_flow.dart';
 import 'package:petrolpump_flutter/navigation/main_tabs_flow.dart';
 import 'package:petrolpump_flutter/navigation/signup_flow.dart';
 import 'package:petrolpump_flutter/screens/create_reorder_screen.dart';
+import 'package:petrolpump_flutter/screens/help_center_screen.dart';
 import 'package:petrolpump_flutter/screens/login_screen.dart';
+import 'package:petrolpump_flutter/screens/profile_screen.dart';
 import 'package:petrolpump_flutter/screens/settings_screen.dart';
+import 'package:petrolpump_flutter/screens/staff_form_screen.dart';
+import 'package:petrolpump_flutter/screens/staff_management_screen.dart';
 import 'package:petrolpump_flutter/screens/threshold_screen.dart';
 import 'package:petrolpump_flutter/state/app_session.dart';
 import 'package:petrolpump_flutter/widgets/app_text_field.dart';
@@ -59,6 +64,26 @@ void main() {
   late AppSession session;
   setUp(() => session = AppSession()..signInDemo(email: 'owner@example.com'));
   tearDown(() => session.dispose());
+
+  testWidgets('signing in on Login opens the demo station\'s Dashboard', (tester) async {
+    _useTallSurface(tester);
+    final fresh = AppSession();
+    addTearDown(fresh.dispose);
+    await tester.pumpWidget(AppSessionScope(session: fresh, child: const MaterialApp(home: LoginFlow())));
+
+    await tester.enterText(_field('Email / Username'), 'amir@gmail.com');
+    await tester.enterText(_field('Password'), 'secret123');
+    await tester.tap(find.widgetWithText(ElevatedButton, 'Sign In'));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(LoginScreen), findsNothing);
+    expect(find.byType(MainTabsFlow), findsOneWidget);
+    expect(find.text('Overview'), findsOneWidget);
+    expect(find.text('Amir Filling, Pattoki'), findsOneWidget);
+    expect(find.text('Revenue Today (PKR)'), findsOneWidget);
+    expect(find.text('1,512,000'), findsOneWidget);
+    expect(fresh.owner!.email, 'amir@gmail.com');
+  });
 
   testWidgets('text typed on Logs survives switching to Dashboard and back', (tester) async {
     await _openTabs(tester, session);
@@ -137,6 +162,31 @@ void main() {
     expect(find.text('Overview'), findsOneWidget);
   });
 
+  testWidgets('a drawer item activated while the drawer is closing still works, and the tabs stay', (tester) async {
+    final semantics = tester.ensureSemantics();
+    await _openTabs(tester, session);
+    await tester.tap(find.byIcon(Icons.menu));
+    await tester.pumpAndSettle();
+
+    // Back starts closing the drawer, which drops its history entry at
+    // once. A screen reader (like a keyboard) can still activate an item
+    // while it slides away; popping then would have removed the tabs' own
+    // route instead of the drawer.
+    await tester.binding.handlePopRoute();
+    await tester.pump(const Duration(milliseconds: 50));
+    expect(find.byType(Drawer), findsOneWidget);
+    tester.semantics.tap(find.semantics.byLabel('Help Center'));
+    await tester.pumpAndSettle();
+    expect(find.byType(HelpCenterScreen), findsOneWidget);
+
+    await tester.tap(find.byIcon(Icons.arrow_back));
+    await tester.pumpAndSettle();
+    expect(find.byType(MainTabsFlow), findsOneWidget);
+    expect(find.text('Overview'), findsOneWidget);
+    expect(find.byType(Drawer), findsNothing);
+    semantics.dispose();
+  });
+
   testWidgets('Threshold Confirm stays open and updates Stock; its Reorder places an order', (tester) async {
     await _openTabs(tester, session);
     await _goToTab(tester, 'Stock');
@@ -172,6 +222,81 @@ void main() {
     expect(find.text('5,000 L'), findsOneWidget);
     expect(find.text(order.poNumber), findsOneWidget);
     expect(find.text('Petrol · 2,000 L'), findsOneWidget);
+  });
+
+  /// Sets Petrol's threshold on Stock -> Set Threshold, so its SnackBar is
+  /// showing, then goes back to Stock.
+  Future<void> showThresholdSnackBar(WidgetTester tester) async {
+    await _goToTab(tester, 'Stock');
+    await tester.tap(find.text('Set Threshold').first);
+    await tester.pumpAndSettle();
+    await tester.enterText(_field('Threshold (L)').first, '5000');
+    await tester.tap(find.text('Confirm').first);
+    await tester.pumpAndSettle();
+    await tester.tap(find.byIcon(Icons.arrow_back));
+    await tester.pumpAndSettle();
+    expect(find.text('Petrol threshold set to 5,000 L'), findsOneWidget);
+  }
+
+  testWidgets("a SnackBar doesn't follow the owner onto Login after logging out", (tester) async {
+    await _openTabs(tester, session);
+    await showThresholdSnackBar(tester);
+
+    await _goToTab(tester, 'Dashboard');
+    await tester.tap(find.byIcon(Icons.menu));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Log Out'));
+    await tester.pumpAndSettle();
+    expect(find.byType(LoginScreen), findsOneWidget);
+    expect(find.text('Petrol threshold set to 5,000 L'), findsNothing);
+  });
+
+  testWidgets("a SnackBar doesn't follow onto another station's tabs", (tester) async {
+    await _openTabs(tester, session);
+    await showThresholdSnackBar(tester);
+
+    await tester.tap(find.text('Amir Filling, Pattoki')); // Stock's station row
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Demo Station 2'));
+    await tester.pumpAndSettle();
+    expect(session.currentStationId, 'station-2');
+    expect(find.text('Petrol threshold set to 5,000 L'), findsNothing);
+  });
+
+  testWidgets('a tab tapped on Profile lands the main tabs on that tab', (tester) async {
+    await _openTabs(tester, session);
+    // From Nozzles' avatar: Profile's bar shows the tab it came from.
+    await _goToTab(tester, 'Nozzles');
+    await tester.tap(find.byTooltip('Profile'));
+    await tester.pumpAndSettle();
+    expect(find.byType(ProfileScreen), findsOneWidget);
+    expect(tester.getSemantics(find.bySemanticsLabel('Nozzles')), containsSemantics(isSelected: true));
+
+    await tester.tap(find.text('Stock'));
+    await tester.pumpAndSettle();
+    expect(find.byType(ProfileScreen), findsNothing);
+    expect(find.byType(MainTabsFlow), findsOneWidget);
+    expect(find.text('Recent Purchased Orders'), findsOneWidget);
+  });
+
+  testWidgets('a double tap on Add Staff opens one form, not two', (tester) async {
+    await _openTabs(tester, session);
+    await tester.tap(find.byTooltip('Profile'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Staff Management'));
+    await tester.pumpAndSettle();
+    expect(find.byType(StaffManagementScreen), findsOneWidget);
+
+    // Both taps land before a frame: the second finds Staff no longer the
+    // top route (isTopRoute) and does nothing.
+    await tester.tap(find.text('+ Add Staff'));
+    await tester.tap(find.text('+ Add Staff'));
+    await tester.pumpAndSettle();
+    expect(find.byType(StaffFormScreen, skipOffstage: false), findsOneWidget);
+
+    await tester.tap(find.byIcon(Icons.arrow_back));
+    await tester.pumpAndSettle();
+    expect(find.byType(StaffManagementScreen), findsOneWidget);
   });
 
   testWidgets('logging out from the drawer clears the session and lands on Login', (tester) async {

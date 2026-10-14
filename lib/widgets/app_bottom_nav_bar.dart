@@ -82,6 +82,20 @@ class _NavItem extends StatelessWidget {
   Widget build(BuildContext context) {
     final color = isActive ? AppColors.brandRed : AppColors.secondaryText;
 
+    // One node for a screen reader: "Stock, button, selected". The red dot
+    // shows the selected tab only to the eye, so it is said out loud here,
+    // with the tap; the label below would otherwise be read on its own.
+    return Semantics(
+      button: true,
+      selected: isActive,
+      label: item.label,
+      onTap: onTap,
+      excludeSemantics: true,
+      child: _buildItem(color),
+    );
+  }
+
+  Widget _buildItem(Color color) {
     return InkWell(
       onTap: onTap,
       customBorder: const RoundedRectangleBorder(

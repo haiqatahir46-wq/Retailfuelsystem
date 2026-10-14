@@ -11,16 +11,23 @@ import '../theme/app_colors.dart';
 class LocationSearchScreen extends StatefulWidget {
   final ValueChanged<PlaceDetails> onLocationSelected;
 
+  /// The Places service to search with. Null (the app) creates one that
+  /// this screen closes when it goes; a service passed in (a test's fake)
+  /// is the caller's to close.
+  final GooglePlacesService? service;
+
   @override
   State<LocationSearchScreen> createState() => _LocationSearchScreenState();
 
-  const LocationSearchScreen({super.key, required this.onLocationSelected});
+  const LocationSearchScreen({super.key, required this.onLocationSelected, this.service});
 }
 
 class _LocationSearchScreenState extends State<LocationSearchScreen> {
   static const _genericError = 'Something went wrong with location search. Please try again.';
 
-  final _service = GooglePlacesService();
+  // Read once: the screen keeps the service it started with.
+  late final GooglePlacesService _service;
+  late final bool _ownsService;
   final _controller = TextEditingController();
   Timer? _debounce;
   List<PlacePrediction> _results = [];
@@ -42,10 +49,17 @@ class _LocationSearchScreenState extends State<LocationSearchScreen> {
   bool _selecting = false;
 
   @override
+  void initState() {
+    super.initState();
+    _ownsService = widget.service == null;
+    _service = widget.service ?? GooglePlacesService();
+  }
+
+  @override
   void dispose() {
     _debounce?.cancel();
     _controller.dispose();
-    _service.close();
+    if (_ownsService) _service.close();
     super.dispose();
   }
 

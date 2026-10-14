@@ -9,13 +9,14 @@ import '../widgets/empty_state.dart';
 import '../widgets/tank_widgets.dart';
 
 /// Opened from the "Set Threshold" button on any tank card in
-/// StockScreen - a SEPARATE screen from CreateReorderScreen, reached
-/// independently. Lists every tank (reusing the same TankStock data
+/// StockScreen. Lists every tank (reusing the same TankStock data
 /// StockScreen already shows, so the numbers never drift apart) with its
-/// current threshold and a field for a new one. No bottom nav (this is a
-/// drill-down, not a tab), just a back arrow to return to Stock.
+/// current threshold and a field for a new one. Each card's Reorder button
+/// ([onReorder]) opens CreateReorderScreen on top of this one, whose back
+/// arrow returns here. No bottom nav (this is a drill-down, not a tab),
+/// just a back arrow to return to Stock.
 ///
-/// A new threshold must be above 0 and no more than the tank holds
+/// A new threshold must be at least 1 L and no more than the tank holds
 /// (commas allowed); the error shows under the field. After a valid
 /// Confirm the field empties, and the card's Threshold figure shows the
 /// new value once the flow has saved it.
@@ -83,7 +84,11 @@ class _ThresholdScreenState extends State<ThresholdScreen> {
         backgroundColor: AppColors.cardBackground,
         elevation: 0,
         foregroundColor: AppColors.primaryText,
-        leading: IconButton(icon: const Icon(Icons.arrow_back), onPressed: widget.onBack),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          tooltip: MaterialLocalizations.of(context).backButtonTooltip,
+          onPressed: widget.onBack,
+        ),
         title: Text(
           widget.stationName,
           style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: AppColors.primaryText),
@@ -128,13 +133,16 @@ class _ThresholdScreenState extends State<ThresholdScreen> {
                     const SizedBox(height: 12),
                     AppTextField(
                       label: 'Threshold (L)',
-                      hint: 'New threshold, up to ${formatThousands(tank.capacity)}',
+                      hint: 'New threshold, up to ${formatLimit(tank.capacity)}',
                       controller: _controllerFor(tank.id),
                       keyboardType: const TextInputType.numberWithOptions(decimal: true),
                       textInputAction: TextInputAction.done,
+                      // At least 1 L, so a value can't be accepted and then
+                      // shown as "0 L" on the card.
                       validator: Validators.positiveNumber(
+                        min: 1,
                         max: tank.capacity,
-                        maxMessage: "Can't be more than the tank holds (${formatThousands(tank.capacity)} L)",
+                        maxMessage: "Can't be more than the tank holds (${formatLimit(tank.capacity)} L)",
                       ),
                     ),
                     const SizedBox(height: 12),

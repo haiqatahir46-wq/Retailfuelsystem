@@ -57,7 +57,11 @@ class _SelectStationScreenState extends State<SelectStationScreen> {
         elevation: 0,
         scrolledUnderElevation: 0,
         foregroundColor: AppColors.primaryText,
-        leading: IconButton(icon: const Icon(Icons.arrow_back), tooltip: 'Back', onPressed: widget.onBack),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          tooltip: MaterialLocalizations.of(context).backButtonTooltip,
+          onPressed: widget.onBack,
+        ),
         title: const Text(
           'Select Station',
           style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: AppColors.primaryText),
@@ -208,15 +212,26 @@ class _StationRow extends StatelessWidget {
                 ],
               ),
             ),
-            Material(
-              color: actionBg,
-              shape: const CircleBorder(),
-              child: InkWell(
-                customBorder: const CircleBorder(),
-                onTap: onEdit,
-                child: Padding(
-                  padding: const EdgeInsets.all(9),
-                  child: Icon(Icons.edit_outlined, color: actionColor, size: 18),
+            // The same 36dp circle as before, inside a 48dp tap target
+            // (the recommended minimum) so it is easy to hit; the tooltip
+            // names it for a screen reader too.
+            Tooltip(
+              message: 'Edit location',
+              child: Material(
+                type: MaterialType.transparency,
+                child: InkResponse(
+                  onTap: onEdit,
+                  radius: 24,
+                  child: SizedBox.square(
+                    dimension: 48,
+                    child: Center(
+                      child: Ink(
+                        padding: const EdgeInsets.all(9),
+                        decoration: BoxDecoration(color: actionBg, shape: BoxShape.circle),
+                        child: Icon(Icons.edit_outlined, color: actionColor, size: 18),
+                      ),
+                    ),
+                  ),
                 ),
               ),
             ),

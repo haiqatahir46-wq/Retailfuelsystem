@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../screens/location_search_screen.dart';
 import '../screens/select_station_screen.dart';
+import '../services/google_places_service.dart';
 import '../state/app_session.dart';
 import 'add_station_route.dart';
 import 'route_guard.dart';
@@ -11,6 +12,11 @@ import 'route_guard.dart';
 /// here switches what every main tab shows, and a station added or edited
 /// here is still there the next time this opens.
 class SelectStationFlow extends StatelessWidget {
+  /// The Places service the location search uses; null (the app) lets the
+  /// search create its own. Tests pass a fake, so editing a location runs
+  /// without the network.
+  final GooglePlacesService? placesService;
+
   @override
   Widget build(BuildContext context) {
     final session = AppSessionScope.of(context);
@@ -21,6 +27,9 @@ class SelectStationFlow extends StatelessWidget {
       onStationSelected: (id) {
         // Guarded like a push: a double tap must not pop the main tabs too.
         if (!isTopRoute(context)) return;
+        // A SnackBar still showing is about the old station ("PO-... placed"),
+        // so it mustn't carry over onto the new one's tabs.
+        if (id != session.currentStationId) ScaffoldMessenger.maybeOf(context)?.clearSnackBars();
         session.selectStation(id);
         Navigator.of(context).pop();
       },
@@ -31,6 +40,7 @@ class SelectStationFlow extends StatelessWidget {
             // The search closes itself after a pick. Only the location
             // changes; the station keeps the name the owner gave it.
             builder: (context) => LocationSearchScreen(
+              service: placesService,
               onLocationSelected: (details) => session.updateStationLocation(station.id, details.formattedAddress),
             ),
           ),
@@ -40,5 +50,5 @@ class SelectStationFlow extends StatelessWidget {
     );
   }
 
-  const SelectStationFlow({super.key});
+  const SelectStationFlow({super.key, this.placesService});
 }

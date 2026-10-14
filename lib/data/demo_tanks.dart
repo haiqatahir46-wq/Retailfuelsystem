@@ -79,12 +79,20 @@ List<TankStock> tanksForStation(
 
 // DateTime has no const constructor, so these lists are built once at
 // first use and frozen so no screen can edit the shared demo data.
+//
+// A pending order is fuel on its way into a tank, so it must fit in the
+// room that tank has today (capacity minus today's sales, demo_sales.dart):
+// station-1's Petrol tank has 18,000 L of room and 15,000 L on order;
+// station-2's Petrol tank has 9,000 L of room and 8,000 L on order. Each
+// is the station's lowest tank, the one an owner would actually reorder.
+// test/demo_data_test.dart checks every pending order fits.
 final _demoPurchaseOrders = <String, List<PurchaseOrder>>{
   'station-1': List.unmodifiable([
     PurchaseOrder(
       poNumber: 'PO-2026-0063',
       date: DateTime(2026, 5, 22),
-      fuelName: 'Hi-Octane',
+      tankId: 'station-1-petrol',
+      fuelName: 'Petrol',
       litres: 15000,
       vehicle: DeliveryVehicle.carriage,
       status: PurchaseOrderStatus.pending,
@@ -92,6 +100,7 @@ final _demoPurchaseOrders = <String, List<PurchaseOrder>>{
     PurchaseOrder(
       poNumber: 'PO-2026-0061',
       date: DateTime(2026, 5, 18),
+      tankId: 'station-1-petrol',
       fuelName: 'Petrol',
       litres: 20000,
       vehicle: DeliveryVehicle.self,
@@ -100,6 +109,7 @@ final _demoPurchaseOrders = <String, List<PurchaseOrder>>{
     PurchaseOrder(
       poNumber: 'PO-2026-0058',
       date: DateTime(2026, 5, 15),
+      tankId: 'station-1-diesel',
       fuelName: 'Diesel',
       litres: 20000,
       vehicle: DeliveryVehicle.carriage,
@@ -110,14 +120,16 @@ final _demoPurchaseOrders = <String, List<PurchaseOrder>>{
     PurchaseOrder(
       poNumber: 'PO-2026-0062',
       date: DateTime(2026, 5, 20),
-      fuelName: 'Diesel',
-      litres: 10000,
+      tankId: 'station-2-petrol',
+      fuelName: 'Petrol',
+      litres: 8000,
       vehicle: DeliveryVehicle.self,
       status: PurchaseOrderStatus.pending,
     ),
     PurchaseOrder(
       poNumber: 'PO-2026-0059',
       date: DateTime(2026, 5, 16),
+      tankId: 'station-2-petrol',
       fuelName: 'Petrol',
       litres: 12000,
       vehicle: DeliveryVehicle.carriage,

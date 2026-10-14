@@ -8,7 +8,8 @@ import 'login_flow.dart';
 import 'route_guard.dart';
 import 'staff_flow.dart';
 
-/// Opened from Dashboard/Stock's Profile icon (or drawer). Shows the
+/// Opened from the Dashboard/Nozzles profile avatar or the drawer (on
+/// Dashboard and Stock). Shows the
 /// signed-in owner and current station from the session, owns the Account
 /// Details / Staff / Help & Support drill-downs, and pops its own
 /// bottom-nav taps back up to MainTabsFlow rather than pushing a second

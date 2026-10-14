@@ -111,13 +111,19 @@ class _DrawerItem extends StatelessWidget {
         label,
         style: TextStyle(fontSize: 14.5, fontWeight: FontWeight.w600, color: c),
       ),
-      // Close the drawer first: an open drawer is a local history entry on
-      // the screen's route, so this pop closes it rather than leaving the
-      // screen. Otherwise it would still be open on coming back.
+      // Close the drawer first, or it would still be open on coming back.
+      // Through the Scaffold, never Navigator.pop: the drawer drops its
+      // history entry as soon as it starts closing (back, or a scrim tap),
+      // yet an item can still be activated while it slides away (by a
+      // screen reader or the keyboard), and a pop then would remove the
+      // screen's own route - the main tabs are the root route, so the app
+      // would be left on a black screen. Only an open drawer is closed; one
+      // already closing just carries on.
       onTap: tap == null
           ? null
           : () {
-              Navigator.of(context).pop();
+              final scaffold = Scaffold.maybeOf(context);
+              if (scaffold != null && scaffold.isDrawerOpen) scaffold.closeDrawer();
               tap();
             },
     );

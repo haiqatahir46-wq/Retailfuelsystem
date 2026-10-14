@@ -65,6 +65,14 @@ class Station {
   /// same reason.
   static const maxNozzlesPerGrade = 40;
 
+  /// The largest tank capacity (litres) a form accepts. A retail station's
+  /// underground tanks hold tens of thousands of litres each, so 1,000,000 L
+  /// is far beyond any real one: it only stops a slip ("250000000") or a
+  /// pasted giant number from becoming a tank whose figures overflow every
+  /// card. Threshold and reorder limits sit inside a tank's capacity, so
+  /// this bounds them too. For the Add Station capacity validators.
+  static const maxCapacityLitres = 1000000.0;
+
   /// A new tank's reorder threshold as a fraction of its capacity, until the
   /// owner sets one on the Threshold screen. A quarter of the tank is a
   /// common reorder point when there is no sales history to size it from.

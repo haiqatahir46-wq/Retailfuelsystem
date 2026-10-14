@@ -1,4 +1,6 @@
+import 'dart:async';
 import 'dart:convert';
+import 'dart:io' show HandshakeException;
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
@@ -8,11 +10,33 @@ import 'package:petrolpump_flutter/services/google_places_service.dart';
 http.Response _json(Object body, [int status = 200]) =>
     http.Response(jsonEncode(body), status, headers: {'content-type': 'application/json; charset=utf-8'});
 
-Matcher _placesError([Object? messageMatcher]) => isA<PlacesException>().having(
+TypeMatcher<PlacesException> _placesError([Object? messageMatcher]) => isA<PlacesException>().having(
       (e) => e.message,
       'message',
       messageMatcher ?? isNotEmpty,
     );
+
+/// Google's reply to a request with a bad key, project details and all.
+const _googleDetail = 'API key not valid. Please pass a valid API key. '
+    'Visit https://console.developers.google.com/apis/api/places.googleapis.com/overview?project=123456789012';
+
+/// A service whose every request gets [status] with Google's error body.
+GooglePlacesService _replying(int status) => GooglePlacesService(
+      apiKey: 'k',
+      client: MockClient((_) async => _json({
+            'error': {'code': status, 'message': _googleDetail, 'status': 'SOME_STATUS'},
+          }, status)),
+    );
+
+/// The message of the PlacesException [service]'s autocomplete throws.
+Future<String> _messageFor(GooglePlacesService service) async {
+  try {
+    await service.autocomplete('Pattoki');
+  } on PlacesException catch (e) {
+    return e.message;
+  }
+  fail('autocomplete did not throw');
+}
 
 void main() {
   group('autocomplete', () {
@@ -133,17 +157,40 @@ void main() {
   });
 
   group('errors', () {
-    test('an error body surfaces Google\'s message', () async {
-      final service = GooglePlacesService(
-        apiKey: 'bad-key',
-        client: MockClient((_) async => _json({
-              'error': {'code': 400, 'message': 'API key not valid. Please pass a valid API key.', 'status': 'INVALID_ARGUMENT'},
-            }, 400)),
-      );
+    test('Google\'s error text stays out of the message, in debugMessage only', () async {
       await expectLater(
-        service.autocomplete('Pattoki'),
-        throwsA(_placesError(contains('API key not valid'))),
+        _replying(400).autocomplete('Pattoki'),
+        throwsA(isA<PlacesException>()
+            .having((e) => e.message, 'message', isNot(contains('API key not valid')))
+            .having((e) => e.message, 'message', isNot(contains('123456789012')))
+            .having((e) => e.message, 'message', isNot(contains('console')))
+            .having((e) => e.toString(), 'toString', isNot(contains('123456789012')))
+            .having((e) => e.debugMessage, 'debugMessage', allOf(contains('HTTP 400'), contains('API key not valid')))),
       );
+    });
+
+    test('each kind of HTTP error gets its own fixed message', () async {
+      final setup = await _messageFor(_replying(400));
+      expect(setup, contains('Google Places setup'));
+      expect(await _messageFor(_replying(401)), setup);
+      expect(await _messageFor(_replying(403)), setup);
+
+      expect(await _messageFor(_replying(429)), contains('too many requests'));
+
+      final server = await _messageFor(_replying(500));
+      expect(server, contains('Google Places is having trouble'));
+      expect(await _messageFor(_replying(502)), server);
+      expect(await _messageFor(_replying(503)), server);
+
+      // Anything else still reads sensibly, and only quotes the status.
+      expect(await _messageFor(_replying(404)), 'Location search failed (HTTP 404). Please try again.');
+
+      // Every one of them is different from the others and free of Google's text.
+      final all = [setup, await _messageFor(_replying(429)), server];
+      expect(all.toSet(), hasLength(3));
+      for (final m in all) {
+        expect(m, isNot(contains('API key not valid')));
+      }
     });
 
     test('a non-200 without an error body still gives a readable message', () async {
@@ -151,7 +198,11 @@ void main() {
         apiKey: 'k',
         client: MockClient((_) async => http.Response('<html>Bad gateway</html>', 502)),
       );
-      await expectLater(service.autocomplete('Pattoki'), throwsA(_placesError(contains('502'))));
+      await expectLater(
+        service.autocomplete('Pattoki'),
+        throwsA(_placesError(contains('Google Places is having trouble'))
+            .having((e) => e.debugMessage, 'debugMessage', 'HTTP 502')),
+      );
     });
 
     test('malformed JSON is a PlacesException', () async {
@@ -179,7 +230,39 @@ void main() {
         apiKey: 'k',
         client: MockClient((request) async => throw http.ClientException('offline', request.url)),
       );
-      await expectLater(service.autocomplete('Pattoki'), throwsA(_placesError()));
+      await expectLater(service.autocomplete('Pattoki'), throwsA(_placesError(contains("Couldn't reach Google Places"))));
+    });
+
+    test('any other exception from the HTTP stack is the connection message, not a raw error', () async {
+      for (final error in <Object>[
+        const HandshakeException('CERTIFICATE_VERIFY_FAILED'),
+        StateError('socket closed'),
+        Exception('something odd'),
+      ]) {
+        final service = GooglePlacesService(apiKey: 'k', client: MockClient((_) async => throw error));
+        await expectLater(
+          service.autocomplete('Pattoki'),
+          throwsA(_placesError(contains("Couldn't reach Google Places"))
+              .having((e) => e.debugMessage, 'debugMessage', contains('$error'))),
+          reason: '$error',
+        );
+        await expectLater(service.getPlaceDetails('abc'), throwsA(_placesError()), reason: '$error');
+      }
+    });
+
+    // testWidgets for its fake clock: the 10 s timeout passes instantly.
+    testWidgets('a request that never answers times out after 10 s', (tester) async {
+      final service = GooglePlacesService(
+        apiKey: 'k',
+        client: MockClient((_) => Completer<http.Response>().future),
+      );
+      Object? error;
+      unawaited(service.autocomplete('Pattoki').then<void>((_) {}, onError: (Object e) => error = e));
+
+      await tester.pump(const Duration(seconds: 9));
+      expect(error, isNull);
+      await tester.pump(const Duration(seconds: 2));
+      expect(error, _placesError(contains('took too long')));
     });
 
     test('a missing key is a PlacesException and sends nothing', () async {
@@ -198,6 +281,7 @@ void main() {
 
     test('PlacesException.toString is just the message', () {
       expect(const PlacesException('Friendly text').toString(), 'Friendly text');
+      expect(const PlacesException('Friendly text', debugMessage: 'secret detail').toString(), 'Friendly text');
     });
   });
 

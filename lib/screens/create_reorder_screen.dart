@@ -9,20 +9,28 @@ import '../widgets/empty_state.dart';
 import '../widgets/tank_widgets.dart';
 
 /// Opened from the "Create Reorder" button on any tank card in
-/// StockScreen - a SEPARATE screen from ThresholdScreen, reached
-/// independently. Lists every tank (reusing the same TankStock data
-/// StockScreen already shows, so the numbers never drift apart) with a
-/// blank reorder-quantity field per tank - nothing pre-filled, the owner
-/// enters how much they actually want to order. No bottom nav (this is a
-/// drill-down, not a tab), just a back arrow to return to Stock.
+/// StockScreen, or from a Reorder button on ThresholdScreen. Lists every
+/// tank (reusing the same TankStock data StockScreen already shows, so the
+/// numbers never drift apart) with a blank reorder-quantity field per tank
+/// - nothing pre-filled, the owner enters how much they actually want to
+/// order. No bottom nav (this is a drill-down, not a tab), just a back
+/// arrow to return to whichever screen opened it (Stock or Threshold).
 ///
-/// A quantity must be above 0 and fit in the space left in the tank
-/// (capacity minus current volume; commas allowed). A full tank can't be
-/// reordered: its field and Submit are disabled. After a valid Submit the
-/// field empties for the next order.
+/// A quantity must be at least 1 L and fit in the tank's room: the space
+/// left (capacity minus current volume) minus the litres already on order
+/// for it ([pendingLitres]), the same TankStock.roomToOrder rule
+/// AppSession.placeReorder enforces. Commas are allowed. A tank with less
+/// than 1 L of room can't be reordered: its field and Submit are disabled
+/// and it says "Tank is full" or, when pending orders fill the rest,
+/// "Already fully on order". After a valid Submit the field empties for
+/// the next order.
 class CreateReorderScreen extends StatefulWidget {
   final String stationName;
   final List<TankStock> tanks;
+
+  /// Litres on order and not yet delivered, by tank id
+  /// (AppSession.pendingLitresFor). A tank that isn't listed has none.
+  final Map<String, double> pendingLitres;
   final VoidCallback? onBack;
   final void Function(TankStock tank, double quantity)? onSubmitReorder;
 
@@ -33,6 +41,7 @@ class CreateReorderScreen extends StatefulWidget {
     super.key,
     required this.stationName,
     required this.tanks,
+    this.pendingLitres = const {},
     this.onBack,
     this.onSubmitReorder,
   });
@@ -51,9 +60,6 @@ class _CreateReorderScreenState extends State<CreateReorderScreen> {
 
   TextEditingController _controllerFor(String id) => _controllers.putIfAbsent(id, TextEditingController.new);
   GlobalKey<FormState> _formKeyFor(String id) => _formKeys.putIfAbsent(id, GlobalKey<FormState>.new);
-
-  /// Litres the tank can still take.
-  static double _spaceLeft(TankStock tank) => (tank.capacity - tank.currentVolume).clamp(0.0, double.infinity);
 
   @override
   void dispose() {
@@ -85,7 +91,11 @@ class _CreateReorderScreenState extends State<CreateReorderScreen> {
         backgroundColor: AppColors.cardBackground,
         elevation: 0,
         foregroundColor: AppColors.primaryText,
-        leading: IconButton(icon: const Icon(Icons.arrow_back), onPressed: widget.onBack),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          tooltip: MaterialLocalizations.of(context).backButtonTooltip,
+          onPressed: widget.onBack,
+        ),
         title: Text(
           widget.stationName,
           style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: AppColors.primaryText),
@@ -111,8 +121,14 @@ class _CreateReorderScreenState extends State<CreateReorderScreen> {
   }
 
   Widget _buildTankCard(TankStock tank) {
-    final space = _spaceLeft(tank);
-    final full = space <= 0;
+    final pending = widget.pendingLitres[tank.id] ?? 0;
+    final room = tank.roomToOrder(pending);
+    // An order is at least 1 L (so none can be accepted and then shown as
+    // "0 L"), so a tank with less room than that can't take one.
+    final full = room < 1;
+    // Why there's no room: the tank itself is full, or orders on the way
+    // will fill what's left.
+    final fullMessage = tank.spaceLeft < 1 ? 'Tank is full' : 'Already fully on order';
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -139,21 +155,26 @@ class _CreateReorderScreenState extends State<CreateReorderScreen> {
             const SizedBox(height: 12),
             AppTextField(
               label: 'Reorder Quantity (L)',
-              hint: full ? '' : 'Up to ${formatThousands(space)} L',
+              hint: full ? '' : 'Up to ${formatLimit(room)} L',
               controller: _controllerFor(tank.id),
               enabled: !full,
               keyboardType: const TextInputType.numberWithOptions(decimal: true),
               textInputAction: TextInputAction.done,
+              // The limit is shown rounded down (formatLimit), so the
+              // figure a message suggests is always accepted.
               validator: Validators.positiveNumber(
-                max: space,
-                maxMessage: 'Only ${formatThousands(space)} L of space left in this tank',
+                min: 1,
+                max: room,
+                maxMessage: pending > 0
+                    ? 'Only ${formatLimit(room)} L of space left (${formatThousands(pending)} L already on order)'
+                    : 'Only ${formatLimit(room)} L of space left in this tank',
               ),
             ),
             if (full) ...[
               const SizedBox(height: 8),
-              const Text(
-                'Tank is full',
-                style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.statusDispensing),
+              Text(
+                fullMessage,
+                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.statusDispensing),
               ),
             ],
             const SizedBox(height: 12),

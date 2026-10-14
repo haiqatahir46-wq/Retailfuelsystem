@@ -6,6 +6,11 @@ import 'demo_tanks.dart';
 /// source (sales, tanks, orders, logs, nozzles), so each one shows its own
 /// figures. The nozzle lists hold DateTimes and can't be const, so this
 /// list is built once at first use and frozen.
+///
+/// Each station's `nozzles` is its setup (which nozzles exist), stamped
+/// when this list was built. The screens don't show those stamps:
+/// AppSession.nozzlesFor reads a demo station's nozzles afresh from
+/// nozzlesFor on every call, so "x min ago" stays measured from now.
 final demoStations = List<Station>.unmodifiable([
   Station(
     id: 'station-1',

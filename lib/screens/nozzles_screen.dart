@@ -25,6 +25,9 @@ class NozzlesScreen extends StatefulWidget {
   final List<Nozzle> nozzles;
   final ValueChanged<int> onNavTap;
 
+  /// The header's avatar opens Profile, as on the Dashboard.
+  final VoidCallback? onProfileTap;
+
   @override
   State<NozzlesScreen> createState() => _NozzlesScreenState();
 
@@ -34,6 +37,7 @@ class NozzlesScreen extends StatefulWidget {
     required this.stationName,
     required this.nozzles,
     required this.onNavTap,
+    this.onProfileTap,
   });
 }
 
@@ -55,7 +59,7 @@ class _NozzlesScreenState extends State<NozzlesScreen> {
         bottom: false,
         child: Column(
           children: [
-            _Header(stationName: widget.stationName),
+            _Header(stationName: widget.stationName, onProfileTap: widget.onProfileTap),
             Expanded(
               child: SingleChildScrollView(
                 padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
@@ -151,6 +155,7 @@ class _NozzlesScreenState extends State<NozzlesScreen> {
 /// AppTopBar, without its menu and Help icons) over the station name.
 class _Header extends StatelessWidget {
   final String stationName;
+  final VoidCallback? onProfileTap;
 
   @override
   Widget build(BuildContext context) {
@@ -161,17 +166,15 @@ class _Header extends StatelessWidget {
       ),
       child: Column(
         children: [
-          const Padding(
+          Padding(
             // Less on the right and above and below: the avatar's 48dp tap
             // target supplies that space itself.
-            padding: EdgeInsets.fromLTRB(20, 4, 10, 0),
+            padding: const EdgeInsets.fromLTRB(20, 4, 10, 0),
             child: Row(
               children: [
-                Expanded(child: AppBrandMark()),
-                NotificationBell(),
-                // Profile isn't reachable from this tab yet, so the avatar
-                // has nothing to open.
-                ProfileAvatarButton(),
+                const Expanded(child: AppBrandMark()),
+                const NotificationBell(),
+                ProfileAvatarButton(onTap: onProfileTap),
               ],
             ),
           ),
@@ -181,7 +184,7 @@ class _Header extends StatelessWidget {
     );
   }
 
-  const _Header({required this.stationName});
+  const _Header({required this.stationName, this.onProfileTap});
 }
 
 class _TodayDropdown extends StatelessWidget {
@@ -207,6 +210,19 @@ class _FuelChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // One node for a screen reader: "Diesel, button, selected" - the
+    // highlight alone only shows which grade is picked to the eye.
+    return Semantics(
+      button: true,
+      selected: selected,
+      label: label,
+      onTap: onTap,
+      excludeSemantics: true,
+      child: _buildChip(),
+    );
+  }
+
+  Widget _buildChip() {
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(12),

@@ -109,7 +109,11 @@ class _StaffFormScreenState extends State<StaffFormScreen> {
         backgroundColor: AppColors.cardBackground,
         elevation: 0,
         foregroundColor: AppColors.primaryText,
-        leading: IconButton(icon: const Icon(Icons.arrow_back), onPressed: widget.onBack),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          tooltip: MaterialLocalizations.of(context).backButtonTooltip,
+          onPressed: widget.onBack,
+        ),
         title: Text(
           widget.stationName,
           style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: AppColors.primaryText),
