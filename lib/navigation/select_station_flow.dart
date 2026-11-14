@@ -5,6 +5,7 @@ import '../services/google_places_service.dart';
 import '../state/app_session.dart';
 import 'add_station_route.dart';
 import 'route_guard.dart';
+import 'server_action.dart';
 
 /// Station switcher, with its own "+ Add Station" drill-down and an
 /// "edit" action that opens the Google Places location search. The
@@ -37,11 +38,17 @@ class SelectStationFlow extends StatelessWidget {
         if (!isTopRoute(context)) return;
         Navigator.of(context).push(
           MaterialPageRoute(
-            // The search closes itself after a pick. Only the location
-            // changes; the station keeps the name the owner gave it.
-            builder: (context) => LocationSearchScreen(
+            // The search closes itself after a pick, so the save runs
+            // without a spinner (one would be what the search's own pop
+            // closed). Only the location changes; the station keeps the
+            // name the owner gave it.
+            builder: (searchContext) => LocationSearchScreen(
               service: placesService,
-              onLocationSelected: (details) => session.updateStationLocation(station.id, details.formattedAddress),
+              onLocationSelected: (details) => runServerAction(
+                context,
+                () => session.updateStationLocation(station.id, details.formattedAddress),
+                showProgress: false,
+              ),
             ),
           ),
         );

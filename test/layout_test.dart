@@ -156,12 +156,12 @@ void main() {
 
   testWidgets('a very long station name is cut short, not overflowing', (tester) async {
     final session = await _pumpTabs(tester, textScale: 1.3);
-    final station = session.addStation(
+    final station = (await session.addStation(
       name: 'Al-Madina Petroleum Service and Filling Station, Main GT Road, Pattoki',
       location: 'Pattoki',
       nozzleCounts: const {'Petrol': 2, 'Diesel': 2, 'Hi-Octane': 2},
       capacities: const {'Petrol': 25000, 'Diesel': 25000, 'Hi-Octane': 25000},
-    );
+    ))!;
     session.selectStation(station.id);
     await tester.pumpAndSettle();
     await _visitEverything(tester);

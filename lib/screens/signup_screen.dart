@@ -12,12 +12,18 @@ import '../widgets/wave_clipper.dart';
 /// fix), shorter still (5 fields need more room than the 2-field login).
 ///
 /// Create Account only goes ahead once the form is valid: a username or
-/// Gmail (a valid email address if it has an '@'), a password of 6+ characters, a date of birth, a station name and
-/// a whole number of stations from 1 to [Station.maxSignupStations].
+/// Gmail (a valid email address if it has an '@'; always an email address
+/// when [requireEmail]), a password of 6+ characters, a date of birth, a
+/// station name and a whole number of stations from 1 to
+/// [Station.maxSignupStations].
 class SignupScreen extends StatefulWidget {
   final Widget? stationImage;
   final VoidCallback? onBack;
   final VoidCallback? onSignIn;
+
+  /// Asks for an email address instead of "username or Gmail": an account
+  /// on the server signs in with its email.
+  final bool requireEmail;
   final void Function({
     required String usernameOrGmail,
     required String password,
@@ -32,6 +38,7 @@ class SignupScreen extends StatefulWidget {
     this.stationImage,
     this.onBack,
     this.onSignIn,
+    this.requireEmail = false,
   });
 
   @override
@@ -169,13 +176,15 @@ class _SignupScreenState extends State<SignupScreen> {
                       ),
                       const SizedBox(height: 22),
                       AppTextField(
-                        label: 'Username or Gmail',
-                        hint: 'Enter username or Gmail',
+                        label: widget.requireEmail ? 'Email' : 'Username or Gmail',
+                        hint: widget.requireEmail ? 'Enter your email address' : 'Enter username or Gmail',
                         controller: _userController,
                         keyboardType: TextInputType.emailAddress,
                         textInputAction: TextInputAction.next,
                         // With an '@' it is meant as an email, so it must be one.
-                        validator: Validators.usernameOrEmail('Enter a username or Gmail address'),
+                        validator: widget.requireEmail
+                            ? Validators.email(required: true)
+                            : Validators.usernameOrEmail('Enter a username or Gmail address'),
                       ),
                       const SizedBox(height: 14),
                       AppTextField(

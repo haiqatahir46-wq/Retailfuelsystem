@@ -17,8 +17,11 @@ final _demoKeys = {...demoSalesByStation.keys, ...demoTankConfigs.keys};
 
 AppSession _demoSession() => AppSession()..signInDemo(email: 'owner@example.com');
 
-AppSession _signedUp({String name = 'Amir Filling', int count = 3}) =>
-    AppSession()..signUp(usernameOrEmail: 'amir@gmail.com', stationName: name, stationCount: count);
+Future<AppSession> _signedUp({String name = 'Amir Filling', int count = 3}) async {
+  final session = AppSession();
+  await session.signUp(usernameOrEmail: 'amir@gmail.com', stationName: name, stationCount: count);
+  return session;
+}
 
 void main() {
   test('starts signed out with nothing in it', () {
@@ -87,27 +90,31 @@ void main() {
   });
 
   group('signUp', () {
-    test('the owner comes from what was typed', () {
-      expect(_signedUp().owner!.name, 'amir');
-      expect(_signedUp().owner!.email, 'amir@gmail.com');
-      final byName = AppSession()..signUp(usernameOrEmail: 'Amir Khan', stationName: 'A', stationCount: 1);
+    test('the owner comes from what was typed', () async {
+      expect((await _signedUp()).owner!.name, 'amir');
+      expect((await _signedUp()).owner!.email, 'amir@gmail.com');
+      final byName = AppSession();
+      await byName.signUp(usernameOrEmail: 'Amir Khan', stationName: 'A', stationCount: 1);
       expect(byName.owner!.name, 'Amir Khan');
       expect(byName.owner!.email, '');
     });
 
-    test('station ids are unique and never a demo key', () {
-      final ids = [..._signedUp(count: 20).stations, ..._signedUp(count: 20).stations].map((st) => st.id).toList();
+    test('station ids are unique and never a demo key', () async {
+      final ids = [...(await _signedUp(count: 20)).stations, ...(await _signedUp(count: 20)).stations]
+          .map((st) => st.id)
+          .toList();
       expect(ids, hasLength(40));
       expect(ids.toSet(), hasLength(40));
       expect(ids.where(_demoKeys.contains), isEmpty);
     });
 
-    test('a signed-up station has no demo sales, tanks, orders, logs or nozzles', () {
-      final s = _signedUp();
+    test('a signed-up station has no demo sales, tanks, orders, logs or nozzles', () async {
+      final s = await _signedUp();
       expect(s.currentStation, s.stations.first);
       for (final st in s.stations) {
         for (final period in SalesReportPeriod.values) {
           expect(salesFor(st.id, period), isEmpty);
+          expect(s.salesFor(st.id, period), isEmpty);
         }
         expect(s.tanksFor(st.id), isEmpty);
         expect(s.purchaseOrdersFor(st.id), isEmpty);
@@ -116,39 +123,40 @@ void main() {
       }
     });
 
-    test('the demo stations are not the new owner\'s', () {
-      final s = _signedUp();
+    test('the demo stations are not the new owner\'s', () async {
+      final s = await _signedUp();
       expect(s.stationById('station-1'), isNull);
       expect(s.tanksFor('station-1'), isEmpty);
       expect(s.purchaseOrdersFor('station-1'), isEmpty);
+      expect(s.salesFor('station-1', SalesReportPeriod.today), isEmpty);
     });
 
-    test('staff starts empty', () => expect(_signedUp().staff, isEmpty));
+    test('staff starts empty', () async => expect((await _signedUp()).staff, isEmpty));
 
-    test('the station count is clamped', () {
-      expect(_signedUp(count: 999999999).stations, hasLength(Station.maxSignupStations));
-      expect(_signedUp(count: 0).stations, hasLength(1));
-      expect(_signedUp(count: -4).stations, hasLength(1));
+    test('the station count is clamped', () async {
+      expect((await _signedUp(count: 999999999)).stations, hasLength(Station.maxSignupStations));
+      expect((await _signedUp(count: 0)).stations, hasLength(1));
+      expect((await _signedUp(count: -4)).stations, hasLength(1));
     });
 
-    test('a blank station name is normalised once, for every reader', () {
-      final s = _signedUp(name: '   ', count: 2);
+    test('a blank station name is normalised once, for every reader', () async {
+      final s = await _signedUp(name: '   ', count: 2);
       expect(s.stations.first.name, 'Station 1');
       expect(s.currentStation!.name, 'Station 1');
       expect(s.stations[1].name, 'Station 2');
-      expect(_signedUp(name: '  Amir Filling ').currentStation!.name, 'Amir Filling');
+      expect((await _signedUp(name: '  Amir Filling ')).currentStation!.name, 'Amir Filling');
     });
   });
 
   group('stations', () {
-    test('addStation builds tanks and nozzles from the form, with a fresh id', () {
+    test('addStation builds tanks and nozzles from the form, with a fresh id', () async {
       final s = _demoSession();
-      final added = s.addStation(
+      final added = (await s.addStation(
         name: '  New Station ',
         location: 'Lahore',
         nozzleCounts: const {'Petrol': 2, 'Diesel': 1},
         capacities: const {'Petrol': 20000, 'Diesel': 10000},
-      );
+      ))!;
       expect(s.stations.last, added);
       expect(added.name, 'New Station');
       expect(_demoKeys.contains(added.id), isFalse);
@@ -169,16 +177,16 @@ void main() {
       expect(s.purchaseOrdersFor(added.id), isEmpty);
     });
 
-    test('a blank added station name becomes "Station N"', () {
+    test('a blank added station name becomes "Station N"', () async {
       final s = _demoSession();
-      final added = s.addStation(name: ' ', location: '', nozzleCounts: const {}, capacities: const {});
+      final added = (await s.addStation(name: ' ', location: '', nozzleCounts: const {}, capacities: const {}))!;
       expect(added.name, 'Station 3');
     });
 
-    test('two added stations get different ids', () {
+    test('two added stations get different ids', () async {
       final s = _demoSession();
-      final a = s.addStation(name: 'A', location: '', nozzleCounts: const {}, capacities: const {});
-      final b = s.addStation(name: 'B', location: '', nozzleCounts: const {}, capacities: const {});
+      final a = (await s.addStation(name: 'A', location: '', nozzleCounts: const {}, capacities: const {}))!;
+      final b = (await s.addStation(name: 'B', location: '', nozzleCounts: const {}, capacities: const {}))!;
       expect(a.id, isNot(b.id));
     });
 
@@ -190,19 +198,19 @@ void main() {
       expect(s.currentStation!.id, 'station-2');
     });
 
-    test('updateStationLocation changes only the location', () {
+    test('updateStationLocation changes only the location', () async {
       final s = _demoSession();
-      s.updateStationLocation('station-1', '  Main Bazaar, Pattoki  ');
+      await s.updateStationLocation('station-1', '  Main Bazaar, Pattoki  ');
       final st = s.stationById('station-1')!;
       expect(st.location, 'Main Bazaar, Pattoki');
       expect(st.name, 'Amir Filling, Pattoki');
     });
   });
 
-  test('addStaff persists, with a fresh id', () {
+  test('addStaff persists, with a fresh id', () async {
     final s = _demoSession();
     final before = s.staff.length;
-    final added = s.addStaff(name: ' Ali Raza ', role: 'Attendant', phone: '0300-0000000');
+    final added = (await s.addStaff(name: ' Ali Raza ', role: 'Attendant', phone: '0300-0000000'))!;
     expect(s.staff, hasLength(before + 1));
     expect(s.staff.last.name, 'Ali Raza');
     expect(s.staff.map((m) => m.id).toSet(), hasLength(before + 1));
@@ -210,23 +218,23 @@ void main() {
   });
 
   group('setThreshold', () {
-    test('changes that tank\'s threshold and health, and only that tank\'s', () {
+    test('changes that tank\'s threshold and health, and only that tank\'s', () async {
       final s = _demoSession();
       TankStock petrol() => s.tanksFor('station-1').firstWhere((t) => t.id == 'station-1-petrol');
       // 7,000 L left against the demo 18,000 L threshold.
       expect(petrol().health, TankHealth.critical);
 
-      expect(s.setThreshold('station-1-petrol', 5000), isTrue);
+      expect(await s.setThreshold('station-1-petrol', 5000), isTrue);
       expect(petrol().threshold, 5000);
       expect(petrol().health, TankHealth.healthy);
       expect(s.tanksFor('station-1').firstWhere((t) => t.id == 'station-1-diesel').threshold, 18000);
     });
 
-    test('rejects a value that isn\'t a finite, non-negative number of litres', () {
+    test('rejects a value that isn\'t a finite, non-negative number of litres', () async {
       final s = _demoSession();
-      expect(s.setThreshold('station-1-petrol', -1), isFalse);
-      expect(s.setThreshold('station-1-petrol', double.nan), isFalse);
-      expect(s.setThreshold('station-1-petrol', double.infinity), isFalse);
+      expect(await s.setThreshold('station-1-petrol', -1), isFalse);
+      expect(await s.setThreshold('station-1-petrol', double.nan), isFalse);
+      expect(await s.setThreshold('station-1-petrol', double.infinity), isFalse);
       expect(s.tanksFor('station-1').first.threshold, 18000);
     });
   });
@@ -236,15 +244,15 @@ void main() {
     TankStock tankOf(AppSession s, String stationId, String tankId) =>
         s.tanksFor(stationId).firstWhere((t) => t.id == tankId);
 
-    test('adds a pending order dated today at the top, with a unique PO number', () {
+    test('adds a pending order dated today at the top, with a unique PO number', () async {
       final s = _demoSession();
       // Diesel: 16,000 L of 25,000, nothing on order, so 9,000 L of room.
       final tank = tankOf(s, 'station-1', 'station-1-diesel');
       // Captured first: the order is dated by the clock inside placeReorder,
       // which is already the next day if this runs across midnight.
       final before = DateTime.now();
-      final first = s.placeReorder(stationId: 'station-1', tank: tank, litres: 5000)!;
-      final second = s.placeReorder(stationId: 'station-1', tank: tank, litres: 3000)!;
+      final first = (await s.placeReorder(stationId: 'station-1', tank: tank, litres: 5000))!;
+      final second = (await s.placeReorder(stationId: 'station-1', tank: tank, litres: 3000))!;
 
       final orders = s.purchaseOrdersFor('station-1');
       expect(orders.first, second);
@@ -263,17 +271,17 @@ void main() {
       expect(s.purchaseOrdersFor('station-2'), hasLength(purchaseOrdersFor('station-2').length));
     });
 
-    test('PO numbers carry on after the highest one the owner has, at any station', () {
+    test('PO numbers carry on after the highest one the owner has, at any station', () async {
       final s = _demoSession();
       final year = DateTime.now().year;
       // The demo orders go up to PO-2026-0063 (at station-1).
-      final a = s.placeReorder(stationId: 'station-2', tank: tankOf(s, 'station-2', 'station-2-diesel'), litres: 100)!;
-      final b = s.placeReorder(stationId: 'station-1', tank: tankOf(s, 'station-1', 'station-1-diesel'), litres: 100)!;
+      final a = (await s.placeReorder(stationId: 'station-2', tank: tankOf(s, 'station-2', 'station-2-diesel'), litres: 100))!;
+      final b = (await s.placeReorder(stationId: 'station-1', tank: tankOf(s, 'station-1', 'station-1-diesel'), litres: 100))!;
       expect(a.poNumber, 'PO-$year-0064');
       expect(b.poNumber, 'PO-$year-0065');
     });
 
-    test('pendingLitresFor adds up the pending demo and session orders for one tank', () {
+    test('pendingLitresFor adds up the pending demo and session orders for one tank', () async {
       final s = _demoSession();
       // The demo PO-2026-0063: 15,000 L of Petrol on its way to station-1.
       expect(s.pendingLitresFor('station-1-petrol'), 15000);
@@ -281,59 +289,61 @@ void main() {
       expect(s.pendingLitresFor('station-2-petrol'), 8000);
       expect(s.pendingLitresFor('no-such-tank'), 0);
 
-      s.placeReorder(stationId: 'station-1', tank: tankOf(s, 'station-1', 'station-1-diesel'), litres: 2500);
+      await s.placeReorder(stationId: 'station-1', tank: tankOf(s, 'station-1', 'station-1-diesel'), litres: 2500);
       expect(s.pendingLitresFor('station-1-diesel'), 2500);
       expect(s.pendingLitresFor('station-2-diesel'), 0);
 
       // A new owner never counts the demo orders.
-      expect(_signedUp().pendingLitresFor('station-1-petrol'), 0);
+      expect((await _signedUp()).pendingLitresFor('station-1-petrol'), 0);
     });
 
-    test('rejects an order bigger than the tank\'s room, counting what is already on order', () {
+    test('rejects an order bigger than the tank\'s room, counting what is already on order', () async {
       final s = _demoSession();
       // Diesel: 9,000 L of space, nothing on order.
       final diesel = tankOf(s, 'station-1', 'station-1-diesel');
-      expect(s.placeReorder(stationId: 'station-1', tank: diesel, litres: 9001), isNull);
-      expect(s.placeReorder(stationId: 'station-1', tank: diesel, litres: 9000), isNotNull);
+      expect(await s.placeReorder(stationId: 'station-1', tank: diesel, litres: 9001), isNull);
+      expect(await s.placeReorder(stationId: 'station-1', tank: diesel, litres: 9000), isNotNull);
       // Now fully on order: the same 9,000 L of space can't be ordered twice.
-      expect(s.placeReorder(stationId: 'station-1', tank: diesel, litres: 1), isNull);
+      expect(await s.placeReorder(stationId: 'station-1', tank: diesel, litres: 1), isNull);
 
       // Petrol: 18,000 L of space, 15,000 already on order, so 3,000 L of room.
       final petrol = tankOf(s, 'station-1', 'station-1-petrol');
-      expect(s.placeReorder(stationId: 'station-1', tank: petrol, litres: 3001), isNull);
-      expect(s.placeReorder(stationId: 'station-1', tank: petrol, litres: 3000), isNotNull);
+      expect(await s.placeReorder(stationId: 'station-1', tank: petrol, litres: 3001), isNull);
+      expect(await s.placeReorder(stationId: 'station-1', tank: petrol, litres: 3000), isNotNull);
       expect(s.pendingLitresFor('station-1-petrol'), 18000);
 
       // Exactly the two orders that fitted were placed.
       expect(s.purchaseOrdersFor('station-1'), hasLength(purchaseOrdersFor('station-1').length + 2));
     });
 
-    test('rejects a full tank, and a tank that isn\'t that station\'s', () {
+    test('rejects a full tank, and a tank that isn\'t that station\'s', () async {
       final s = _demoSession();
-      final added = s.addStation(name: 'New', location: '', nozzleCounts: const {}, capacities: const {'Petrol': 20000});
+      final added =
+          (await s.addStation(name: 'New', location: '', nozzleCounts: const {}, capacities: const {'Petrol': 20000}))!;
       // No sales yet, so its tank is full.
-      expect(s.placeReorder(stationId: added.id, tank: s.tanksFor(added.id).single, litres: 1), isNull);
-      expect(s.placeReorder(stationId: 'station-1', tank: tankOf(s, 'station-2', 'station-2-diesel'), litres: 100), isNull);
+      expect(await s.placeReorder(stationId: added.id, tank: s.tanksFor(added.id).single, litres: 1), isNull);
+      expect(await s.placeReorder(stationId: 'station-1', tank: tankOf(s, 'station-2', 'station-2-diesel'), litres: 100),
+          isNull);
       expect(s.purchaseOrdersFor('station-1'), hasLength(purchaseOrdersFor('station-1').length));
       expect(s.purchaseOrdersFor(added.id), isEmpty);
     });
 
-    test('places nothing for zero, negative or non-finite litres, or another owner\'s station', () {
+    test('places nothing for zero, negative or non-finite litres, or another owner\'s station', () async {
       final s = _demoSession();
       final tank = s.tanksFor('station-1').first;
-      expect(s.placeReorder(stationId: 'station-1', tank: tank, litres: 0), isNull);
-      expect(s.placeReorder(stationId: 'station-1', tank: tank, litres: -10), isNull);
-      expect(s.placeReorder(stationId: 'station-1', tank: tank, litres: double.nan), isNull);
-      expect(s.placeReorder(stationId: 'no-such-station', tank: tank, litres: 100), isNull);
+      expect(await s.placeReorder(stationId: 'station-1', tank: tank, litres: 0), isNull);
+      expect(await s.placeReorder(stationId: 'station-1', tank: tank, litres: -10), isNull);
+      expect(await s.placeReorder(stationId: 'station-1', tank: tank, litres: double.nan), isNull);
+      expect(await s.placeReorder(stationId: 'no-such-station', tank: tank, litres: 100), isNull);
       expect(s.purchaseOrdersFor('station-1'), hasLength(purchaseOrdersFor('station-1').length));
     });
   });
 
-  test('signOut clears everything', () {
+  test('signOut clears everything', () async {
     final s = _demoSession();
-    s.addStaff(name: 'A', role: 'Attendant', phone: '1');
-    s.setThreshold('station-1-petrol', 5000);
-    s.placeReorder(stationId: 'station-1', tank: s.tanksFor('station-1').first, litres: 100);
+    await s.addStaff(name: 'A', role: 'Attendant', phone: '1');
+    await s.setThreshold('station-1-petrol', 5000);
+    await s.placeReorder(stationId: 'station-1', tank: s.tanksFor('station-1').first, litres: 100);
     expect(s.purchaseOrdersFor('station-1'), hasLength(purchaseOrdersFor('station-1').length + 1));
     s.signOut();
     expect(s.isSignedIn, isFalse);
@@ -349,19 +359,29 @@ void main() {
     expect(s.purchaseOrdersFor('station-1'), hasLength(purchaseOrdersFor('station-1').length));
   });
 
-  test('every change notifies listeners', () {
+  test('every change notifies listeners', () async {
     final s = AppSession();
     var calls = 0;
     s.addListener(() => calls++);
     s.signInDemo(email: 'a@b.c');
     s.selectStation('station-2');
-    s.addStation(name: 'N', location: '', nozzleCounts: const {}, capacities: const {});
-    s.updateStationLocation('station-2', 'Somewhere');
-    s.addStaff(name: 'A', role: 'Attendant', phone: '1');
-    s.setThreshold('station-2-petrol', 100);
-    s.placeReorder(stationId: 'station-2', tank: s.tanksFor('station-2').first, litres: 100);
+    await s.addStation(name: 'N', location: '', nozzleCounts: const {}, capacities: const {});
+    await s.updateStationLocation('station-2', 'Somewhere');
+    await s.addStaff(name: 'A', role: 'Attendant', phone: '1');
+    await s.setThreshold('station-2-petrol', 100);
+    await s.placeReorder(stationId: 'station-2', tank: s.tanksFor('station-2').first, litres: 100);
     s.signOut();
     expect(calls, 8);
+  });
+
+  test('demo mode: no server, so signIn is the demo account and data needs no loading', () async {
+    final s = AppSession();
+    expect(s.usesServer, isFalse);
+    await s.signIn(email: 'amir@gmail.com', password: 'anything');
+    expect(s.owner!.email, 'amir@gmail.com');
+    expect(s.hasDataFor('station-1'), isTrue);
+    expect(s.salesFor('station-1', SalesReportPeriod.today), salesFor('station-1', SalesReportPeriod.today));
+    expect(s.salesFor('no-such-station', SalesReportPeriod.today), isEmpty);
   });
 
   group('ids', () {

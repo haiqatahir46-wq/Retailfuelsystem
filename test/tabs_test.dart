@@ -6,6 +6,7 @@ import 'package:petrolpump_flutter/models/sales.dart';
 import 'package:petrolpump_flutter/navigation/main_tabs_flow.dart';
 import 'package:petrolpump_flutter/screens/dashboard_screen.dart';
 import 'package:petrolpump_flutter/state/app_session.dart';
+import 'package:petrolpump_flutter/widgets/sales_report_widgets.dart';
 
 /// The main tabs for the demo owner, on station-1: Petrol 7,000 L
 /// (critical), Diesel 16,000 L (low) and Hi-Octane 22,000 L (healthy), each
@@ -112,12 +113,12 @@ void main() {
 
     testWidgets('is hidden for a station with no tanks', (tester) async {
       final session = await _openTabs(tester);
-      final station = session.addStation(
+      final station = (await session.addStation(
         name: 'No Tanks',
         location: 'Lahore',
         nozzleCounts: const {'Petrol': 1},
         capacities: const {},
-      );
+      ))!;
       session.selectStation(station.id);
       await tester.pumpAndSettle();
       expect(find.text('No Tanks'), findsOneWidget);
@@ -152,14 +153,50 @@ void main() {
       expect(find.text('Faults 0'), findsOneWidget);
     });
 
+    testWidgets('the period dropdown totals the selected grade over that period', (tester) async {
+      await _openTabs(tester);
+      await tester.tap(find.text('Nozzles'));
+      await tester.pumpAndSettle();
+
+      double litresOf(SalesReportPeriod period, String fuel) =>
+          PeriodSales.sum(salesFor('station-1', period)).litresOf(fuel);
+      Future<void> pick(SalesReportPeriod period) async {
+        await tester.tap(find.byType(PeriodDropdown));
+        await tester.pumpAndSettle();
+        // .last: the menu item, not the dropdown's own label.
+        await tester.tap(find.text(periodLabel(period)).last);
+        await tester.pumpAndSettle();
+      }
+
+      for (final (period, span) in [
+        (SalesReportPeriod.weekly, 'Last 7 Days'),
+        (SalesReportPeriod.monthly, 'Last 4 Weeks'),
+        (SalesReportPeriod.yearly, 'Last 12 Months'),
+        (SalesReportPeriod.today, 'Today'),
+      ]) {
+        await pick(period);
+        final litres = litresOf(period, 'Petrol');
+        expect(find.text('Petrol Sales ($span)'), findsOneWidget);
+        expect(find.text('${formatThousands(litres)} L'), findsOneWidget);
+        expect(find.text('PKR ${formatThousands(litres * pricePerLitre('Petrol'))}'), findsOneWidget);
+      }
+
+      // The period stays put when the grade changes.
+      await pick(SalesReportPeriod.weekly);
+      await tester.tap(find.text('Diesel'));
+      await tester.pumpAndSettle();
+      expect(find.text('Diesel Sales (Last 7 Days)'), findsOneWidget);
+      expect(find.text('${formatThousands(litresOf(SalesReportPeriod.weekly, 'Diesel'))} L'), findsOneWidget);
+    });
+
     testWidgets('a grade with no nozzles says so', (tester) async {
       final session = await _openTabs(tester);
-      final station = session.addStation(
+      final station = (await session.addStation(
         name: 'Petrol Only',
         location: 'Lahore',
         nozzleCounts: const {'Petrol': 2},
         capacities: const {'Petrol': 20000},
-      );
+      ))!;
       session.selectStation(station.id);
       await tester.pumpAndSettle();
       await tester.tap(find.text('Nozzles'));

@@ -1,0 +1,16 @@
+name: rfms_server
+description: Backend API for PARCO Fuel System, backed by PostgreSQL and Redis.
+publish_to: 'none'
+version: 0.1.0
+
+environment:
+  sdk: ^3.5.0
+
+dependencies:
+  postgres: ^3.4.0
+  redis: ^4.0.0
+  shelf: ^1.4.1
+  shelf_router: ^1.1.4
+
+dev_dependencies:
+  lints: ^5.0.0

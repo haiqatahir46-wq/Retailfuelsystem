@@ -3,23 +3,27 @@ import '../screens/login_screen.dart';
 import '../state/app_session.dart';
 import 'main_tabs_flow.dart';
 import 'route_guard.dart';
+import 'server_action.dart';
 import 'signup_flow.dart';
 
 /// Login screen, wrapped so its callbacks have a `context` with a
 /// Navigator to push through. Stateless - it only routes onward, no local
 /// state of its own.
 ///
-/// TODO: onSignIn signs in the demo account (AppSession.signInDemo) with no
-/// real check - there's no backend yet. Once you have an auth API,
-/// validate email/password here first (e.g. show an error SnackBar on
-/// failure) and only navigate on success.
+/// Sign In goes through AppSession.signIn: with the server, the email and
+/// password are checked against the users table and the owner's data is
+/// loaded, and a wrong password (or an unreachable server) shows the
+/// server's message instead of moving on; on demo data any login is the
+/// demo account.
 class LoginFlow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return LoginScreen(
-      onSignIn: (email, password) {
+      onSignIn: (email, password) async {
         if (!isTopRoute(context)) return;
-        AppSessionScope.read(context).signInDemo(email: email);
+        final session = AppSessionScope.read(context);
+        final signedIn = await runServerAction(context, () => session.signIn(email: email, password: password));
+        if (!signedIn || !context.mounted) return;
         Navigator.of(context).pushReplacement(
           MaterialPageRoute(builder: (context) => const MainTabsFlow()),
         );
@@ -38,8 +42,9 @@ class LoginFlow extends StatelessWidget {
   const LoginFlow({super.key});
 }
 
-/// Every Log Out button ends here: forgets the session, then returns to
-/// Login with nothing behind it, so back can't reopen a signed-out screen.
+/// Every Log Out button ends here: forgets the session (and, with the
+/// server, ends it there in the background), then returns to Login with
+/// nothing behind it, so back can't reopen a signed-out screen.
 /// Any SnackBar still showing goes too: it belongs to the old session (the
 /// app-wide ScaffoldMessenger would otherwise carry "Petrol threshold
 /// set..." onto Login).

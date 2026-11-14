@@ -20,6 +20,7 @@ import 'login_flow.dart';
 import 'profile_flow.dart';
 import 'route_guard.dart';
 import 'select_station_flow.dart';
+import 'server_action.dart';
 
 /// The five bottom-nav tabs (Dashboard / Nozzles / Tanks / Stock / Logs)
 /// for the session's current station. Each tab is a full Scaffold with its
@@ -119,8 +120,10 @@ class _MainTabsFlowState extends State<MainTabsFlow> {
             tanks: session.tanksFor(stationId),
             onBack: () => Navigator.of(context).pop(),
             // Stays open, so the other tanks can be set too.
-            onConfirmThreshold: (tank, litres) {
-              if (session.setThreshold(tank.id, litres)) {
+            onConfirmThreshold: (tank, litres) async {
+              var saved = false;
+              await runServerAction(context, () async => saved = await session.setThreshold(tank.id, litres));
+              if (saved && context.mounted) {
                 _showSnackBar(context, '${tank.fuelName} threshold set to ${formatThousands(litres)} L');
               }
             },
@@ -147,12 +150,19 @@ class _MainTabsFlowState extends State<MainTabsFlow> {
             onBack: () => Navigator.of(context).pop(),
             // Stays open, so more tanks can be reordered; the order is at
             // the top of Stock's Recent Purchased Orders.
-            onSubmitReorder: (tank, litres) {
-              final order = session.placeReorder(stationId: stationId, tank: tank, litres: litres);
+            onSubmitReorder: (tank, litres) async {
+              PurchaseOrder? order;
+              final sent = await runServerAction(
+                context,
+                () async => order = await session.placeReorder(stationId: stationId, tank: tank, litres: litres),
+              );
+              // A server refusal has already been shown, with its reason.
+              if (!sent || !context.mounted) return;
+              final placed = order;
               _showSnackBar(
                 context,
-                order != null
-                    ? '${order.poNumber} placed: ${formatThousands(order.litres)} L of ${order.fuelName}'
+                placed != null
+                    ? '${placed.poNumber} placed: ${formatThousands(placed.litres)} L of ${placed.fuelName}'
                     // The form checks the same limit, so this only happens
                     // if the tank changed under it; say so rather than
                     // emptying the field in silence.
@@ -181,8 +191,19 @@ class _MainTabsFlowState extends State<MainTabsFlow> {
     if (owner == null || station == null) return const ColoredBox(color: AppColors.background);
 
     final id = station.id;
+    // With the server, a station's data arrives after it is picked; until
+    // it has, show that it's loading (or why it couldn't load).
+    if (!session.hasDataFor(id)) {
+      return _StationLoading(
+        stationName: station.name,
+        error: session.isLoading(id) ? null : session.loadErrorFor(id),
+        onRetry: session.refresh,
+        onLogout: () => logOut(context),
+      );
+    }
     final tanks = session.tanksFor(id);
     final nozzles = session.nozzlesFor(id);
+    List<PeriodSales> salesFor(SalesReportPeriod period) => session.salesFor(id, period);
 
     final tabs = <Widget>[
       DashboardScreen(
@@ -193,6 +214,7 @@ class _MainTabsFlowState extends State<MainTabsFlow> {
         userEmail: owner.email,
         tanks: tanks,
         nozzles: nozzles,
+        salesFor: salesFor,
         onNavTap: _goToTab,
         onProfileTap: _openProfile,
         onHelpCenterTap: _openHelpCenter,
@@ -205,6 +227,7 @@ class _MainTabsFlowState extends State<MainTabsFlow> {
         stationId: id,
         stationName: station.name,
         nozzles: nozzles,
+        salesFor: salesFor,
         onNavTap: _goToTab,
         onProfileTap: _openProfile,
       ),
@@ -349,4 +372,74 @@ class _TankLevelCard extends StatelessWidget {
   }
 
   const _TankLevelCard({required this.tank});
+}
+
+/// What the main tabs show while the current station's data is on its way
+/// from the server, or why it couldn't be loaded ([error]), with Retry and
+/// a way out.
+class _StationLoading extends StatelessWidget {
+  final String stationName;
+  final String? error;
+  final Future<void> Function() onRetry;
+  final VoidCallback onLogout;
+
+  @override
+  Widget build(BuildContext context) {
+    final failed = error != null;
+    return Scaffold(
+      backgroundColor: AppColors.background,
+      body: SafeArea(
+        child: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (failed)
+                  const Icon(Icons.cloud_off_outlined, size: 40, color: AppColors.secondaryText)
+                else
+                  const CircularProgressIndicator(color: AppColors.brandRed),
+                const SizedBox(height: 16),
+                Text(
+                  failed ? "Couldn't load $stationName" : 'Loading $stationName…',
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: AppColors.primaryText),
+                ),
+                if (failed) ...[
+                  const SizedBox(height: 8),
+                  Text(
+                    error!,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(fontSize: 13, color: AppColors.secondaryText),
+                  ),
+                  const SizedBox(height: 20),
+                  ElevatedButton(
+                    onPressed: onRetry,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.brandRed,
+                      foregroundColor: Colors.white,
+                      minimumSize: const Size(140, 44),
+                    ),
+                    child: const Text('Retry'),
+                  ),
+                  TextButton(
+                    onPressed: onLogout,
+                    style: TextButton.styleFrom(foregroundColor: AppColors.secondaryText),
+                    child: const Text('Log Out'),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  const _StationLoading({
+    required this.stationName,
+    required this.error,
+    required this.onRetry,
+    required this.onLogout,
+  });
 }

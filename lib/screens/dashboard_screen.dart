@@ -1,6 +1,5 @@
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
-import '../data/demo_sales.dart';
 import '../models/nozzle.dart';
 import '../models/sales.dart';
 import '../models/tank_stock.dart';
@@ -22,7 +21,8 @@ import '../widgets/wave_clipper.dart';
 /// Dashboard agrees with Stock, Tanks and Nozzles: [nozzles] gives the
 /// Active Nozzles count and [tanks] the low-stock alert, which lists every
 /// tank that isn't healthy and opens Stock (via [onNavTap]) to reorder.
-/// The sales figures are looked up by [stationId] with salesFor.
+/// The sales figures come from [salesFor], this station's sales for a
+/// period (MainTabsFlow passes session.salesFor).
 class DashboardScreen extends StatefulWidget {
   final String stationId;
   final String stationName;
@@ -30,6 +30,9 @@ class DashboardScreen extends StatefulWidget {
   final String userEmail;
   final List<TankStock> tanks;
   final List<Nozzle> nozzles;
+
+  /// This station's sales rows for a period, oldest first.
+  final List<PeriodSales> Function(SalesReportPeriod period) salesFor;
   final Widget? stationImage;
   final ValueChanged<int> onNavTap;
   final VoidCallback? onProfileTap;
@@ -46,6 +49,7 @@ class DashboardScreen extends StatefulWidget {
     required this.userEmail,
     required this.tanks,
     required this.nozzles,
+    required this.salesFor,
     required this.onNavTap,
     this.stationImage,
     this.onProfileTap,
@@ -62,11 +66,10 @@ class DashboardScreen extends StatefulWidget {
 class _DashboardScreenState extends State<DashboardScreen> {
   SalesReportPeriod _period = SalesReportPeriod.today;
 
-  // Everything below is scoped to widget.stationId ONLY - see salesFor()'s
-  // doc comment in demo_sales.dart for why this matters: an owner must
-  // never see another station's figures, whether it's their own second
-  // station or (worse) a different owner's station entirely.
-  List<PeriodSales> get _periodData => salesFor(widget.stationId, _period);
+  // Everything below is this station's alone: the session's salesFor
+  // returns nothing for a station the owner doesn't have, never another
+  // station's figures.
+  List<PeriodSales> get _periodData => widget.salesFor(_period);
 
   @override
   Widget build(BuildContext context) {
@@ -222,7 +225,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         _LowStockBanner(tanks: lowTanks, onTap: () => widget.onNavTap(AppTab.stock)),
       ],
       const SizedBox(height: 14),
-      SalesTrendChart(rows: salesFor(widget.stationId, SalesReportPeriod.weekly)),
+      SalesTrendChart(rows: widget.salesFor(SalesReportPeriod.weekly)),
       const SizedBox(height: 20),
       const Text(
         'Fuel Breakdown',

@@ -155,8 +155,8 @@ class _ThresholdScreenState extends State<ThresholdScreen> {
                             onPressed: () => widget.onReorder?.call(tank),
                             style: OutlinedButton.styleFrom(
                               minimumSize: const Size.fromHeight(42),
-                              foregroundColor: AppColors.secondaryText,
-                              side: const BorderSide(color: AppColors.borderDivider, width: 1.4),
+                              foregroundColor: AppColors.brandRed,
+                              side: const BorderSide(color: AppColors.brandRed, width: 1.4),
                               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                               textStyle: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700),
                             ),

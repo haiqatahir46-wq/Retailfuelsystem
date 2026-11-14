@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import '../data/demo_sales.dart';
 import '../models/nozzle.dart';
 import '../models/sales.dart';
 import '../theme/app_colors.dart';
@@ -7,22 +6,29 @@ import '../theme/app_decorations.dart';
 import '../widgets/app_bottom_nav_bar.dart';
 import '../widgets/app_top_bar.dart';
 import '../widgets/empty_state.dart';
+import '../widgets/sales_report_widgets.dart';
 
-/// Nozzles screen - the per-nozzle sales/status detail (fuel filter,
-/// today's totals for the selected grade, live nozzle status list). No
+/// Nozzles screen - the per-nozzle sales/status detail (period and fuel
+/// filters, the selected grade's sales totals, live nozzle status list). No
 /// chart here and no photo - that overview-level content belongs on the
 /// Dashboard instead.
 ///
 /// [nozzles] are THIS station's, every grade, from the session
 /// (MainTabsFlow passes session.nozzlesFor) - the same list the Dashboard's
-/// active/total count reads. Everything below the fuel chips follows the
-/// selected grade: the sales card (today's litres from salesFor by
-/// [stationId], revenue = litres × pricePerLitre, the same formula as the
-/// Dashboard), the status counts and the nozzle cards.
+/// active/total count reads. The period dropdown (Today / Weekly / Monthly /
+/// Yearly, the Dashboard's own) picks what the sales card adds up: that
+/// period's rows from [salesFor], so its figures match the Dashboard's
+/// report. Everything below the fuel chips follows the selected grade: the
+/// sales card (litres, and revenue = litres × pricePerLitre, the same
+/// formula as the Dashboard), the status counts and the nozzle cards.
 class NozzlesScreen extends StatefulWidget {
   final String stationId;
   final String stationName;
   final List<Nozzle> nozzles;
+
+  /// This station's sales rows for a period (MainTabsFlow passes
+  /// session.salesFor), the same figures the Dashboard shows.
+  final List<PeriodSales> Function(SalesReportPeriod period) salesFor;
   final ValueChanged<int> onNavTap;
 
   /// The header's avatar opens Profile, as on the Dashboard.
@@ -36,6 +42,7 @@ class NozzlesScreen extends StatefulWidget {
     required this.stationId,
     required this.stationName,
     required this.nozzles,
+    required this.salesFor,
     required this.onNavTap,
     this.onProfileTap,
   });
@@ -43,6 +50,7 @@ class NozzlesScreen extends StatefulWidget {
 
 class _NozzlesScreenState extends State<NozzlesScreen> {
   int _fuelIndex = 0; // Petrol selected
+  SalesReportPeriod _period = SalesReportPeriod.today;
 
   @override
   Widget build(BuildContext context) {
@@ -51,7 +59,9 @@ class _NozzlesScreenState extends State<NozzlesScreen> {
       for (final n in widget.nozzles)
         if (n.fuelName == fuelName) n,
     ];
-    final litresToday = PeriodSales.sum(salesFor(widget.stationId, SalesReportPeriod.today)).litresOf(fuelName);
+    // Every row of the period added up: today, the last 7 days, the last
+    // 4 weeks or the last 12 months.
+    final litres = PeriodSales.sum(widget.salesFor(_period)).litresOf(fuelName);
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -66,9 +76,9 @@ class _NozzlesScreenState extends State<NozzlesScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Row(
+                    Row(
                       children: [
-                        Expanded(
+                        const Expanded(
                           child: Text(
                             'Nozzle Sales',
                             maxLines: 1,
@@ -80,8 +90,11 @@ class _NozzlesScreenState extends State<NozzlesScreen> {
                             ),
                           ),
                         ),
-                        SizedBox(width: 8),
-                        _TodayDropdown(),
+                        const SizedBox(width: 8),
+                        PeriodDropdown(
+                          period: _period,
+                          onChanged: (period) => setState(() => _period = period),
+                        ),
                       ],
                     ),
                     const SizedBox(height: 14),
@@ -102,8 +115,9 @@ class _NozzlesScreenState extends State<NozzlesScreen> {
                     const SizedBox(height: 14),
                     _SalesCard(
                       fuelName: fuelName,
-                      litres: litresToday,
-                      revenue: litresToday * pricePerLitre(fuelName),
+                      period: _period,
+                      litres: litres,
+                      revenue: litres * pricePerLitre(fuelName),
                     ),
                     const SizedBox(height: 20),
                     const Row(
@@ -187,22 +201,6 @@ class _Header extends StatelessWidget {
   const _Header({required this.stationName, this.onProfileTap});
 }
 
-class _TodayDropdown extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return const Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Text('Today', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.secondaryText)),
-        SizedBox(width: 2),
-        Icon(Icons.keyboard_arrow_down, size: 16, color: AppColors.secondaryText),
-      ],
-    );
-  }
-
-  const _TodayDropdown();
-}
-
 class _FuelChip extends StatelessWidget {
   final String label;
   final bool selected;
@@ -265,11 +263,27 @@ class _FuelChip extends StatelessWidget {
   const _FuelChip({required this.label, required this.selected, required this.onTap});
 }
 
-/// Today's litres and revenue for the selected grade.
+/// The selected grade's litres and revenue over [period].
 class _SalesCard extends StatelessWidget {
   final String fuelName;
+  final SalesReportPeriod period;
   final double litres;
   final double revenue;
+
+  /// What the period's rows cover, said plainly ("Weekly" alone doesn't
+  /// say whether it's this calendar week or the last seven days).
+  String get _span {
+    switch (period) {
+      case SalesReportPeriod.today:
+        return 'Today';
+      case SalesReportPeriod.weekly:
+        return 'Last 7 Days';
+      case SalesReportPeriod.monthly:
+        return 'Last 4 Weeks';
+      case SalesReportPeriod.yearly:
+        return 'Last 12 Months';
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -285,7 +299,7 @@ class _SalesCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            '$fuelName Sales (Today)',
+            '$fuelName Sales ($_span)',
             style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.secondaryText),
           ),
           const SizedBox(height: 10),
@@ -301,7 +315,7 @@ class _SalesCard extends StatelessWidget {
     );
   }
 
-  const _SalesCard({required this.fuelName, required this.litres, required this.revenue});
+  const _SalesCard({required this.fuelName, required this.period, required this.litres, required this.revenue});
 }
 
 class _StatBlock extends StatelessWidget {

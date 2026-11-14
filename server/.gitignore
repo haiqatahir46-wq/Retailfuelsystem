@@ -1,0 +1,4 @@
+# Holds the database and Redis passwords - never commit it.
+.env
+
+.dart_tool/

@@ -1,0 +1,1839 @@
+{
+  "info": {
+    "name": "PARCO Fuel System API",
+    "description": "Tests for the PARCO Fuel System backend (server/). Run the whole collection in order (Collection Runner): each request's Tests tab checks the reply, and some save values (token, station, tank, nozzle ids) for the requests after them.\n\nNeeds: the server running (`dart run bin/server.dart` in server/) and the demo data loaded (`dart run bin/migrate.dart --seed`). A run adds test rows (an order, a staff member, a station, a signup account); `dart run bin/migrate.dart --remove-demo --seed` resets all of them.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{token}}",
+        "type": "string"
+      }
+    ]
+  },
+  "variable": [
+    {
+      "key": "token",
+      "value": ""
+    },
+    {
+      "key": "stationId",
+      "value": ""
+    },
+    {
+      "key": "tankId",
+      "value": ""
+    },
+    {
+      "key": "tankCapacity",
+      "value": ""
+    },
+    {
+      "key": "nozzleId",
+      "value": ""
+    },
+    {
+      "key": "newStationId",
+      "value": ""
+    },
+    {
+      "key": "todayPetrol",
+      "value": ""
+    },
+    {
+      "key": "weekPetrol",
+      "value": ""
+    },
+    {
+      "key": "tooBig",
+      "value": ""
+    },
+    {
+      "key": "threshold",
+      "value": ""
+    },
+    {
+      "key": "poNumber",
+      "value": ""
+    },
+    {
+      "key": "staffCnic",
+      "value": ""
+    },
+    {
+      "key": "signupEmail",
+      "value": ""
+    },
+    {
+      "key": "signupToken",
+      "value": ""
+    },
+    {
+      "key": "otherOwnersStationId",
+      "value": ""
+    },
+    {
+      "key": "lockoutEmail",
+      "value": ""
+    }
+  ],
+  "item": [
+    {
+      "name": "1. Health",
+      "description": "Is the server up, and can it reach PostgreSQL and Redis?",
+      "item": [
+        {
+          "name": "Health check",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/health",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "health"
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 200\", () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test(\"PostgreSQL is ok\", () => pm.expect(body.postgres).to.eql(\"ok\"));",
+                  "pm.test(\"Redis is ok\", () => pm.expect(body.redis).to.eql(\"ok\"));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "2. Sign in",
+      "description": "Login, the session token, and requests without one.",
+      "item": [
+        {
+          "name": "Login - wrong password",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "login"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{email}}\",\n  \"password\": \"wrong-password\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 401\", () => pm.response.to.have.status(401));",
+                  "pm.test(\"Error says: Wrong email or password.\", () => pm.expect(pm.response.json().error).to.include(\"Wrong email or password.\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login - password missing",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "login"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{email}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 422\", () => pm.response.to.have.status(422));",
+                  "pm.test(\"Error says: \\\"password\\\" is required.\", () => pm.expect(pm.response.json().error).to.include(\"\\\"password\\\" is required.\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login (demo owner)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "login"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{email}}\",\n  \"password\": \"{{password}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 200\", () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test(\"Returns a 64-character session token\", () => pm.expect(body.token).to.match(/^[0-9a-f]{64}$/));",
+                  "pm.test(\"Returns the owner\", () => pm.expect(body.owner.email).to.eql(pm.variables.get(\"email\")));",
+                  "// Every later request sends this token (the collection's Bearer auth).",
+                  "pm.collectionVariables.set(\"token\", body.token);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Who am I",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"It's the signed-in owner\", () => pm.expect(pm.response.json().email).to.eql(pm.variables.get(\"email\")));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Stations without a token",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/stations",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "stations"
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 401\", () => pm.response.to.have.status(401));",
+                  "pm.test(\"Error says: Please sign in.\", () => pm.expect(pm.response.json().error).to.include(\"Please sign in.\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Stations with a fake token",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer not-a-real-token"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/stations",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "stations"
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 401\", () => pm.response.to.have.status(401));",
+                  "pm.test(\"Error says: session has expired\", () => pm.expect(pm.response.json().error).to.include(\"session has expired\"));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "3. Stations",
+      "description": "The owner's stations; adding and editing one; another owner's station is hidden.",
+      "item": [
+        {
+          "name": "List my stations",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/stations",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "stations"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 200\", () => pm.response.to.have.status(200));",
+                  "const stations = pm.response.json();",
+                  "pm.test(\"At least one station\", () => pm.expect(stations).to.be.an(\"array\").that.is.not.empty);",
+                  "pm.test(\"Every station has its fields\", () => stations.forEach(s => {",
+                  "  pm.expect(s).to.include.keys(\"id\", \"name\", \"location\", \"status\", \"tanks\", \"nozzles\");",
+                  "  pm.expect([\"active\", \"pending\"]).to.include(s.status);",
+                  "}));",
+                  "const first = stations[0];",
+                  "pm.test(\"The first station has tanks and nozzles\", () => {",
+                  "  pm.expect(first.tanks).to.not.be.empty;",
+                  "  pm.expect(first.nozzles).to.not.be.empty;",
+                  "});",
+                  "// Used by the requests below.",
+                  "pm.collectionVariables.set(\"stationId\", first.id);",
+                  "pm.collectionVariables.set(\"tankId\", first.tanks[0].id);",
+                  "pm.collectionVariables.set(\"tankCapacity\", first.tanks[0].capacity);",
+                  "pm.collectionVariables.set(\"nozzleId\", first.nozzles[0].id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Station that isn't mine",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/stations/999999/tanks",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "stations",
+                "999999",
+                "tanks"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 404\", () => pm.response.to.have.status(404));",
+                  "pm.test(\"Error says: Station not found.\", () => pm.expect(pm.response.json().error).to.include(\"Station not found.\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Add station - nozzles but no tank",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/stations",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "stations"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Postman Test Station\",\n  \"nozzleCounts\": {\n    \"Petrol\": 2\n  },\n  \"capacities\": {}\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 422\", () => pm.response.to.have.status(422));",
+                  "pm.test(\"Error says: Give Petrol a tank capacity\", () => pm.expect(pm.response.json().error).to.include(\"Give Petrol a tank capacity\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Add station",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/stations",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "stations"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Postman Test Station\",\n  \"location\": \"Lahore\",\n  \"nozzleCounts\": {\n    \"Petrol\": 2,\n    \"Diesel\": 1\n  },\n  \"capacities\": {\n    \"Petrol\": 20000,\n    \"Diesel\": 15000\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 201\", () => pm.response.to.have.status(201));",
+                  "const s = pm.response.json();",
+                  "pm.test(\"Has the name and location sent\", () => {",
+                  "  pm.expect(s.name).to.eql(\"Postman Test Station\");",
+                  "  pm.expect(s.location).to.eql(\"Lahore\");",
+                  "});",
+                  "pm.test(\"One tank per grade with a capacity\", () => pm.expect(s.tanks.map(t => t.fuelName)).to.eql([\"Petrol\", \"Diesel\"]));",
+                  "pm.test(\"Threshold starts at a quarter of the capacity\", () => pm.expect(s.tanks[0].threshold).to.eql(5000));",
+                  "pm.test(\"New tanks start empty\", () => s.tanks.forEach(t => pm.expect(t.currentVolume).to.eql(0)));",
+                  "pm.test(\"Three idle nozzles, two to a pump\", () => {",
+                  "  pm.expect(s.nozzles).to.have.lengthOf(3);",
+                  "  s.nozzles.forEach(n => pm.expect(n.status).to.eql(\"idle\"));",
+                  "  pm.expect(s.nozzles.map(n => n.pumpNumber)).to.eql([1, 1, 2]);",
+                  "});",
+                  "pm.collectionVariables.set(\"newStationId\", s.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Edit station location",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/stations/{{newStationId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "stations",
+                "{{newStationId}}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"location\": \"Main GT Road, Lahore\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 200\", () => pm.response.to.have.status(200));",
+                  "const s = pm.response.json();",
+                  "pm.test(\"Location changed\", () => pm.expect(s.location).to.eql(\"Main GT Road, Lahore\"));",
+                  "pm.test(\"Name unchanged\", () => pm.expect(s.name).to.eql(\"Postman Test Station\"));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "4. Sales",
+      "description": "Litres sold per grade, by period (oldest first). The periods nest: the last weekly row is today, the last monthly row is the last 7 days.",
+      "item": [
+        {
+          "name": "Sales - today",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/stations/{{stationId}}/sales?period=today",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "stations",
+                "{{stationId}}",
+                "sales"
+              ],
+              "query": [
+                {
+                  "key": "period",
+                  "value": "today"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 200\", () => pm.response.to.have.status(200));",
+                  "const rows = pm.response.json();",
+                  "pm.test(\"One row, labelled Today\", () => {",
+                  "  pm.expect(rows).to.have.lengthOf(1);",
+                  "  pm.expect(rows[0].label).to.eql(\"Today\");",
+                  "});",
+                  "pm.test(\"Litres are numbers, never negative\", () => [\"petrolL\", \"dieselL\", \"octaneL\"].forEach(k => pm.expect(rows[0][k]).to.be.a(\"number\").and.at.least(0)));",
+                  "pm.collectionVariables.set(\"todayPetrol\", rows[0].petrolL);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Sales - weekly",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/stations/{{stationId}}/sales?period=weekly",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "stations",
+                "{{stationId}}",
+                "sales"
+              ],
+              "query": [
+                {
+                  "key": "period",
+                  "value": "weekly"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 200\", () => pm.response.to.have.status(200));",
+                  "const rows = pm.response.json();",
+                  "pm.test(\"Seven days, Day 1 to Day 7\", () => pm.expect(rows.map(r => r.label)).to.eql([\"Day 1\", \"Day 2\", \"Day 3\", \"Day 4\", \"Day 5\", \"Day 6\", \"Day 7\"]));",
+                  "pm.test(\"The last day is today\", () => pm.expect(rows[6].petrolL).to.be.closeTo(Number(pm.collectionVariables.get(\"todayPetrol\")), 0.01));",
+                  "pm.collectionVariables.set(\"weekPetrol\", rows.reduce((sum, r) => sum + r.petrolL, 0));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Sales - monthly",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/stations/{{stationId}}/sales?period=monthly",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "stations",
+                "{{stationId}}",
+                "sales"
+              ],
+              "query": [
+                {
+                  "key": "period",
+                  "value": "monthly"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 200\", () => pm.response.to.have.status(200));",
+                  "const rows = pm.response.json();",
+                  "pm.test(\"Four weeks, Week 1 to Week 4\", () => pm.expect(rows.map(r => r.label)).to.eql([\"Week 1\", \"Week 2\", \"Week 3\", \"Week 4\"]));",
+                  "pm.test(\"The last week is the last 7 days\", () => pm.expect(rows[3].petrolL).to.be.closeTo(Number(pm.collectionVariables.get(\"weekPetrol\")), 0.05));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Sales - yearly",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/stations/{{stationId}}/sales?period=yearly",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "stations",
+                "{{stationId}}",
+                "sales"
+              ],
+              "query": [
+                {
+                  "key": "period",
+                  "value": "yearly"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 200\", () => pm.response.to.have.status(200));",
+                  "const rows = pm.response.json();",
+                  "pm.test(\"Twelve months, Month 1 to Month 12\", () => {",
+                  "  pm.expect(rows).to.have.lengthOf(12);",
+                  "  pm.expect(rows[0].label).to.eql(\"Month 1\");",
+                  "  pm.expect(rows[11].label).to.eql(\"Month 12\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Sales - unknown period",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/stations/{{stationId}}/sales?period=daily",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "stations",
+                "{{stationId}}",
+                "sales"
+              ],
+              "query": [
+                {
+                  "key": "period",
+                  "value": "daily"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 422\", () => pm.response.to.have.status(422));",
+                  "pm.test(\"Error says: Unknown period\", () => pm.expect(pm.response.json().error).to.include(\"Unknown period\"));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "5. Tanks",
+      "description": "Tank levels and the reorder threshold.",
+      "item": [
+        {
+          "name": "List tanks",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/stations/{{stationId}}/tanks",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "stations",
+                "{{stationId}}",
+                "tanks"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 200\", () => pm.response.to.have.status(200));",
+                  "const tanks = pm.response.json();",
+                  "pm.test(\"At least one tank\", () => pm.expect(tanks).to.not.be.empty);",
+                  "pm.test(\"Every tank's figures make sense\", () => tanks.forEach(t => {",
+                  "  pm.expect([\"Petrol\", \"Diesel\", \"Hi-Octane\"]).to.include(t.fuelName);",
+                  "  pm.expect(t.currentVolume).to.be.within(0, t.capacity);",
+                  "  pm.expect(t.threshold).to.be.within(0, t.capacity);",
+                  "  pm.expect(t.pendingLitres).to.be.at.least(0);",
+                  "}));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Threshold - more than the tank holds",
+          "request": {
+            "method": "PUT",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/tanks/{{tankId}}/threshold",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "tanks",
+                "{{tankId}}",
+                "threshold"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"litres\": {{tooBig}}\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set(\"tooBig\", Number(pm.collectionVariables.get(\"tankCapacity\")) + 1000);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 422\", () => pm.response.to.have.status(422));",
+                  "pm.test(\"Error says: Can't be more than the tank holds\", () => pm.expect(pm.response.json().error).to.include(\"Can't be more than the tank holds\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Threshold - zero",
+          "request": {
+            "method": "PUT",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/tanks/{{tankId}}/threshold",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "tanks",
+                "{{tankId}}",
+                "threshold"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"litres\": 0\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 422\", () => pm.response.to.have.status(422));",
+                  "pm.test(\"Error says: must be at least 1\", () => pm.expect(pm.response.json().error).to.include(\"must be at least 1\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Threshold - set",
+          "request": {
+            "method": "PUT",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/tanks/{{tankId}}/threshold",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "tanks",
+                "{{tankId}}",
+                "threshold"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"litres\": {{threshold}}\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// 72% of the capacity: 18,000 L for a 25,000 L demo tank, its demo value.",
+                  "pm.collectionVariables.set(\"threshold\", Math.round(Number(pm.collectionVariables.get(\"tankCapacity\")) * 0.72));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"Threshold saved\", () => pm.expect(pm.response.json().threshold).to.eql(Number(pm.collectionVariables.get(\"threshold\"))));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "6. Nozzles",
+      "description": "Nozzle status, and a live pump reading kept in Redis.",
+      "item": [
+        {
+          "name": "List nozzles",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/stations/{{stationId}}/nozzles",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "stations",
+                "{{stationId}}",
+                "nozzles"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 200\", () => pm.response.to.have.status(200));",
+                  "const nozzles = pm.response.json();",
+                  "pm.test(\"At least one nozzle\", () => pm.expect(nozzles).to.not.be.empty);",
+                  "pm.test(\"Every nozzle is dispensing, idle or fault\", () => nozzles.forEach(n => {",
+                  "  pm.expect([\"dispensing\", \"idle\", \"fault\"]).to.include(n.status);",
+                  "  pm.expect([\"Petrol\", \"Diesel\", \"Hi-Octane\"]).to.include(n.fuelName);",
+                  "  pm.expect(n.pumpNumber).to.be.at.least(1);",
+                  "}));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Live reading - send",
+          "request": {
+            "method": "PUT",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/nozzles/{{nozzleId}}/live",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "nozzles",
+                "{{nozzleId}}",
+                "live"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"dispensing\",\n  \"litres\": 42.5,\n  \"flowRate\": 38\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 204\", () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Live reading - shows on the nozzle",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/stations/{{stationId}}/nozzles",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "stations",
+                "{{stationId}}",
+                "nozzles"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 200\", () => pm.response.to.have.status(200));",
+                  "const nozzle = pm.response.json().find(n => n.id === pm.collectionVariables.get(\"nozzleId\"));",
+                  "pm.test(\"The reading from Redis is laid over the nozzle\", () => {",
+                  "  pm.expect(nozzle.status).to.eql(\"dispensing\");",
+                  "  pm.expect(nozzle.litres).to.eql(42.5);",
+                  "  pm.expect(nozzle.flowRate).to.eql(38);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Live reading - bad status",
+          "request": {
+            "method": "PUT",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/nozzles/{{nozzleId}}/live",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "nozzles",
+                "{{nozzleId}}",
+                "live"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"flying\",\n  \"litres\": 1,\n  \"flowRate\": 1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 422\", () => pm.response.to.have.status(422));",
+                  "pm.test(\"Error says: \\\"status\\\" must be dispensing, idle or fault.\", () => pm.expect(pm.response.json().error).to.include(\"\\\"status\\\" must be dispensing, idle or fault.\"));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "7. Purchase orders",
+      "description": "Reorders: listed newest first; an order must fit the tank's room (space left minus what's already on order).",
+      "item": [
+        {
+          "name": "List orders",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/stations/{{stationId}}/purchase-orders",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "stations",
+                "{{stationId}}",
+                "purchase-orders"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 200\", () => pm.response.to.have.status(200));",
+                  "const orders = pm.response.json();",
+                  "pm.test(\"Every order has a PO number and a status\", () => orders.forEach(o => {",
+                  "  pm.expect(o.poNumber).to.match(/^PO-\\d{4}-\\d{4,}$/);",
+                  "  pm.expect([\"pending\", \"delivered\"]).to.include(o.status);",
+                  "}));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Order - too big for the tank",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/stations/{{stationId}}/purchase-orders",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "stations",
+                "{{stationId}}",
+                "purchase-orders"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tankId\": \"{{tankId}}\",\n  \"litres\": 1000000\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 422\", () => pm.response.to.have.status(422));",
+                  "pm.test(\"Says why\", () => pm.expect(pm.response.json().error).to.match(/space left|Tank is full|fully on order/));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Order - place",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/stations/{{stationId}}/purchase-orders",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "stations",
+                "{{stationId}}",
+                "purchase-orders"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tankId\": \"{{tankId}}\",\n  \"litres\": 100\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 201\", () => pm.response.to.have.status(201));",
+                  "const order = pm.response.json();",
+                  "pm.test(\"A pending order for 100 L\", () => {",
+                  "  pm.expect(order.status).to.eql(\"pending\");",
+                  "  pm.expect(order.litres).to.eql(100);",
+                  "  pm.expect(order.tankId).to.eql(pm.collectionVariables.get(\"tankId\"));",
+                  "});",
+                  "pm.test(\"PO number is PO-<year>-<sequence>\", () => pm.expect(order.poNumber).to.match(/^PO-\\d{4}-\\d{4,}$/));",
+                  "pm.collectionVariables.set(\"poNumber\", order.poNumber);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Order - now first in the list",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/stations/{{stationId}}/purchase-orders",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "stations",
+                "{{stationId}}",
+                "purchase-orders"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"The new order is listed first\", () => pm.expect(pm.response.json()[0].poNumber).to.eql(pm.collectionVariables.get(\"poNumber\")));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "8. Vehicle log",
+      "description": "Today's vehicle log entries.",
+      "item": [
+        {
+          "name": "List today's log",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/stations/{{stationId}}/vehicle-logs",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "stations",
+                "{{stationId}}",
+                "vehicle-logs"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 200\", () => pm.response.to.have.status(200));",
+                  "const entries = pm.response.json();",
+                  "pm.test(\"Every entry is completed (with litres) or pending\", () => entries.forEach(e => {",
+                  "  pm.expect([\"completed\", \"pending\"]).to.include(e.status);",
+                  "  if (e.status === \"completed\") pm.expect(e.litres).to.be.above(0);",
+                  "}));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "9. Staff",
+      "description": "The owner's staff; a CNIC can only be registered once.",
+      "item": [
+        {
+          "name": "List staff",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/staff",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "staff"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"Every person has a name, role and status\", () => pm.response.json().forEach(m => {",
+                  "  pm.expect(m).to.include.keys(\"id\", \"name\", \"role\", \"phone\", \"status\");",
+                  "  pm.expect([\"active\", \"on_leave\"]).to.include(m.status);",
+                  "}));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Add staff",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/staff",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "staff"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Postman Tester\",\n  \"phone\": \"0300-1234567\",\n  \"cnic\": \"{{staffCnic}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// A fresh CNIC every run, so the CNIC-is-unique rule doesn't refuse it.",
+                  "const digits = n => Array.from({length: n}, () => Math.floor(Math.random() * 10)).join(\"\");",
+                  "pm.collectionVariables.set(\"staffCnic\", `35202-${digits(7)}-${digits(1)}`);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 201\", () => pm.response.to.have.status(201));",
+                  "const m = pm.response.json();",
+                  "pm.test(\"Added as an active Attendant\", () => {",
+                  "  pm.expect(m.name).to.eql(\"Postman Tester\");",
+                  "  pm.expect(m.role).to.eql(\"Attendant\");",
+                  "  pm.expect(m.status).to.eql(\"active\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Add staff - same CNIC again",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/staff",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "staff"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Someone Else\",\n  \"phone\": \"0301-0000000\",\n  \"cnic\": \"{{staffCnic}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 409\", () => pm.response.to.have.status(409));",
+                  "pm.test(\"Error says: already registered\", () => pm.expect(pm.response.json().error).to.include(\"already registered\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Add staff - phone missing",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/staff",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "staff"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"No Phone\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 422\", () => pm.response.to.have.status(422));",
+                  "pm.test(\"Error says: \\\"phone\\\" is required.\", () => pm.expect(pm.response.json().error).to.include(\"\\\"phone\\\" is required.\"));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "10. Sign up",
+      "description": "Creating an account. Each run creates one test account, postman-<time>@example.com.",
+      "item": [
+        {
+          "name": "Sign up - new account",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/auth/signup",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "signup"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{signupEmail}}\",\n  \"password\": \"test1234\",\n  \"stationName\": \"Postman Signup Station\",\n  \"stationCount\": 2\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set(\"signupEmail\", `postman-${Date.now()}@example.com`);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 201\", () => pm.response.to.have.status(201));",
+                  "const body = pm.response.json();",
+                  "pm.test(\"Returns a token and the new owner\", () => {",
+                  "  pm.expect(body.token).to.match(/^[0-9a-f]{64}$/);",
+                  "  pm.expect(body.owner.email).to.eql(pm.collectionVariables.get(\"signupEmail\"));",
+                  "});",
+                  "pm.collectionVariables.set(\"signupToken\", body.token);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Sign up - the new account's stations",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{signupToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/stations",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "stations"
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 200\", () => pm.response.to.have.status(200));",
+                  "const stations = pm.response.json();",
+                  "pm.test(\"Two stations: the named one active, then a pending Station 2\", () => {",
+                  "  pm.expect(stations.map(s => s.name)).to.eql([\"Postman Signup Station\", \"Station 2\"]);",
+                  "  pm.expect(stations.map(s => s.status)).to.eql([\"active\", \"pending\"]);",
+                  "});",
+                  "pm.test(\"A new station has no tanks or nozzles yet\", () => stations.forEach(s => {",
+                  "  pm.expect(s.tanks).to.be.empty;",
+                  "  pm.expect(s.nozzles).to.be.empty;",
+                  "}));",
+                  "pm.collectionVariables.set(\"otherOwnersStationId\", stations[0].id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Sign up - email already used",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/auth/signup",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "signup"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{signupEmail}}\",\n  \"password\": \"test1234\",\n  \"stationName\": \"X\",\n  \"stationCount\": 1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 409\", () => pm.response.to.have.status(409));",
+                  "pm.test(\"Error says: already exists\", () => pm.expect(pm.response.json().error).to.include(\"already exists\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Sign up - invalid email",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/auth/signup",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "signup"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"not-an-email\",\n  \"password\": \"test1234\",\n  \"stationName\": \"X\",\n  \"stationCount\": 1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 422\", () => pm.response.to.have.status(422));",
+                  "pm.test(\"Error says: valid email\", () => pm.expect(pm.response.json().error).to.include(\"valid email\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Sign up - password too short",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/auth/signup",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "signup"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"short-pw@example.com\",\n  \"password\": \"123\",\n  \"stationName\": \"X\",\n  \"stationCount\": 1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 422\", () => pm.response.to.have.status(422));",
+                  "pm.test(\"Error says: at least 6 characters\", () => pm.expect(pm.response.json().error).to.include(\"at least 6 characters\"));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "11. Security",
+      "description": "Owners can't see each other's data; repeated wrong passwords lock an email out (Redis).",
+      "item": [
+        {
+          "name": "Another owner's station is hidden",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/stations/{{otherOwnersStationId}}/tanks",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "stations",
+                "{{otherOwnersStationId}}",
+                "tanks"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 404\", () => pm.response.to.have.status(404));",
+                  "pm.test(\"Error says: Station not found.\", () => pm.expect(pm.response.json().error).to.include(\"Station not found.\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Lockout after 5 wrong passwords",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "login"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{lockoutEmail}}\",\n  \"password\": \"wrong\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Five wrong passwords for a throwaway email first; this request is the sixth.",
+                  "const lockoutEmail = `lockout-${Date.now()}@example.com`;",
+                  "pm.collectionVariables.set(\"lockoutEmail\", lockoutEmail);",
+                  "for (let i = 0; i < 5; i++) {",
+                  "  pm.sendRequest({",
+                  "    url: pm.variables.replaceIn(\"{{baseUrl}}/auth/login\"),",
+                  "    method: \"POST\",",
+                  "    header: {\"Content-Type\": \"application/json\"},",
+                  "    body: {mode: \"raw\", raw: JSON.stringify({email: lockoutEmail, password: \"wrong\"})},",
+                  "  }, () => {});",
+                  "}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 429\", () => pm.response.to.have.status(429));",
+                  "pm.test(\"Error says: Too many wrong passwords\", () => pm.expect(pm.response.json().error).to.include(\"Too many wrong passwords\"));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "12. Log out",
+      "description": "Ending the session; the token stops working at once.",
+      "item": [
+        {
+          "name": "Log out",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/auth/logout",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "logout"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 204\", () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Token no longer works",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 401\", () => pm.response.to.have.status(401));",
+                  "pm.test(\"Error says: session has expired\", () => pm.expect(pm.response.json().error).to.include(\"session has expired\"));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

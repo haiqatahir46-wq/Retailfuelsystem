@@ -15,6 +15,9 @@ analyzer:
     # inside this one - exclude it so `flutter analyze` only reports on
     # this project's own code.
     - Retailfuelsystem/**
+    # The backend API is its own Dart package with its own lints; check it
+    # with `dart analyze` from server/.
+    - server/**
 
 linter:
   # The lint rules applied to this project can be customized in the

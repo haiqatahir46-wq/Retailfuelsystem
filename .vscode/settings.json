@@ -1,3 +1,4 @@
 {
-    "cmake.sourceDirectory": "C:/Flutter/petrolpump_flutter/linux"
+    "cmake.sourceDirectory": "C:/Flutter/petrolpump_flutter/linux",
+    "python.terminal.useEnvFile": true
 }
